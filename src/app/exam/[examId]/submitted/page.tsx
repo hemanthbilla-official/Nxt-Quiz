@@ -1,6 +1,7 @@
 "use client";
 
 import { FloatingThemeToggle } from "@/components/FloatingThemeToggle";
+import { getDefaultFileName, parseCodeFilesPayload } from "@/lib/code-answer";
 import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
@@ -16,12 +17,60 @@ interface ResultItem {
   points: number;
   topic: string;
   questionType: string;
+  challengeMode: "function" | "component" | null;
   question: string;
   codeSnippet: string | null;
   options: Option[];
   correctOptionId: string | null;
   explanation: string;
   selectedOptionId: string | null;
+  codeAnswer: string | null;
+  testPassCount: number;
+  testFailCount: number;
+  testTotalCount: number;
+  isSkipped: boolean;
+  isCorrect: boolean | null;
+}
+
+function isProgrammingResult(result: ResultItem) {
+  return result.questionType === "programming";
+}
+
+function hasAnswered(result: ResultItem) {
+  return isProgrammingResult(result)
+    ? !!result.codeAnswer?.trim()
+    : !!result.selectedOptionId;
+}
+
+function isSkippedResult(result: ResultItem) {
+  return result.isSkipped ?? !hasAnswered(result);
+}
+
+function isCorrectResult(result: ResultItem, isPublished: boolean) {
+  if (!isPublished) return false;
+  if (typeof result.isCorrect === "boolean") return result.isCorrect;
+  return (
+    !isProgrammingResult(result) &&
+    !!result.selectedOptionId &&
+    result.selectedOptionId === result.correctOptionId
+  );
+}
+
+function isIncorrectResult(result: ResultItem, isPublished: boolean) {
+  return isPublished && hasAnswered(result) && !isCorrectResult(result, isPublished);
+}
+
+function getCodeFiles(result: ResultItem) {
+  const parsedFiles = parseCodeFilesPayload(result.codeAnswer);
+  if (parsedFiles?.length) return parsedFiles;
+
+  return [
+    {
+      name: getDefaultFileName(result.challengeMode || "function"),
+      language: "javascript" as const,
+      content: result.codeAnswer || "",
+    },
+  ];
 }
 
 export default function Submitted({
@@ -177,8 +226,8 @@ export default function Submitted({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
+      <div className="screen-loader bg-background">
+        <div className="screen-loader-content">
           <div
             className="spinner mx-auto mb-4"
             style={{ width: 48, height: 48 }}
@@ -197,13 +246,12 @@ export default function Submitted({
   const filteredResults = results.filter((r) => {
     if (filter === "All") return true;
     if (!isPublished) {
-      if (filter === "Skipped") return !r.selectedOptionId;
+      if (filter === "Skipped") return isSkippedResult(r);
       return true;
     }
-    if (filter === "Correct") return r.selectedOptionId === r.correctOptionId;
-    if (filter === "Incorrect")
-      return r.selectedOptionId && r.selectedOptionId !== r.correctOptionId;
-    if (filter === "Skipped") return !r.selectedOptionId;
+    if (filter === "Correct") return isCorrectResult(r, isPublished);
+    if (filter === "Incorrect") return isIncorrectResult(r, isPublished);
+    if (filter === "Skipped") return isSkippedResult(r);
     return true;
   });
 
@@ -432,15 +480,12 @@ export default function Submitted({
                   const count = results.filter((r) => {
                     if (f === "All") return true;
                     if (!isPublished && f === "Skipped")
-                      return !r.selectedOptionId;
+                      return isSkippedResult(r);
                     if (f === "Correct")
-                      return r.selectedOptionId === r.correctOptionId;
+                      return isCorrectResult(r, isPublished);
                     if (f === "Incorrect")
-                      return (
-                        r.selectedOptionId &&
-                        r.selectedOptionId !== r.correctOptionId
-                      );
-                    if (f === "Skipped") return !r.selectedOptionId;
+                      return isIncorrectResult(r, isPublished);
+                    if (f === "Skipped") return isSkippedResult(r);
                     return true;
                   }).length;
 
@@ -464,13 +509,11 @@ export default function Submitted({
 
           <div className="space-y-6">
             {filteredResults.map((r) => {
-              const isCorrect =
-                isPublished && r.selectedOptionId === r.correctOptionId;
-              const isWrong =
-                isPublished &&
-                r.selectedOptionId &&
-                r.selectedOptionId !== r.correctOptionId;
-              const isSkipped = !r.selectedOptionId;
+              const isProgramming = isProgrammingResult(r);
+              const isCorrect = isCorrectResult(r, isPublished);
+              const isWrong = isIncorrectResult(r, isPublished);
+              const isSkipped = isSkippedResult(r);
+              const codeFiles = isProgramming ? getCodeFiles(r) : [];
 
               return (
                 <div
@@ -519,62 +562,110 @@ export default function Submitted({
                       </pre>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {r.options.map((opt) => {
-                        const isUserChoice = opt.id === r.selectedOptionId;
-                        const isTheCorrectAnswer =
-                          isPublished && opt.id === r.correctOptionId;
-
-                        let stateClass =
-                          "border-border bg-card text-muted-foreground";
-
-                        if (isTheCorrectAnswer) {
-                          stateClass =
-                            "border-success bg-success/5 text-success font-bold";
-                        } else if (isUserChoice && isWrong) {
-                          stateClass =
-                            "border-danger bg-danger/5 text-danger font-bold";
-                        } else if (isUserChoice && !isPublished) {
-                          stateClass =
-                            "border-primary bg-primary/5 text-primary font-bold shadow-[0_0_15px_rgba(79,70,229,0.1)]";
-                        }
-
-                        return (
-                          <div
-                            key={opt.id}
-                            className={`relative p-4 rounded-2xl border-2 transition-all flex items-start gap-4 overflow-hidden ${stateClass}`}
-                          >
-                            <div
-                              className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-xs font-black ${
-                                isTheCorrectAnswer
-                                  ? "bg-success text-white"
-                                  : isUserChoice && isWrong
-                                    ? "bg-danger text-white"
-                                    : isUserChoice && !isPublished
-                                      ? "bg-primary text-white"
-                                      : "bg-card-hover"
+                    {isProgramming ? (
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-card-hover px-3 py-1 text-xs font-bold text-muted-foreground">
+                            Coding Question
+                          </span>
+                          {isPublished && !isSkipped && (
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-black ${
+                                isCorrect
+                                  ? "bg-success/10 text-success"
+                                  : "bg-danger/10 text-danger"
                               }`}
                             >
-                              {opt.id}
-                            </div>
-                            <span className="text-sm pt-0.5 flex-1">
-                              {opt.text}
+                              {r.testPassCount}/{r.testTotalCount || 0} tests passing
                             </span>
+                          )}
+                        </div>
 
-                            {isUserChoice && (
-                              <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-foreground text-background text-[9px] font-black rounded-full uppercase">
-                                Your Choice
-                              </span>
-                            )}
-                            {isTheCorrectAnswer && !isUserChoice && (
-                              <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-success text-white text-[9px] font-black rounded-full uppercase">
-                                Correct Answer
-                              </span>
-                            )}
+                        {isSkipped ? (
+                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-semibold text-amber-500">
+                            No code was submitted for this question.
                           </div>
-                        );
-                      })}
-                    </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {codeFiles.map((file) => (
+                              <div
+                                key={file.name}
+                                className="overflow-hidden rounded-2xl border border-border bg-card"
+                              >
+                                <div className="flex items-center justify-between border-b border-border bg-card-hover px-4 py-2">
+                                  <span className="font-mono text-xs font-bold text-foreground">
+                                    {file.name}
+                                  </span>
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                    Your Code
+                                  </span>
+                                </div>
+                                <pre className="max-h-96 overflow-auto p-4 text-xs leading-relaxed">
+                                  <code>{file.content || "// Empty file"}</code>
+                                </pre>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {r.options.map((opt) => {
+                          const isUserChoice = opt.id === r.selectedOptionId;
+                          const isTheCorrectAnswer =
+                            isPublished && opt.id === r.correctOptionId;
+
+                          let stateClass =
+                            "border-border bg-card text-muted-foreground";
+
+                          if (isTheCorrectAnswer) {
+                            stateClass =
+                              "border-success bg-success/5 text-success font-bold";
+                          } else if (isUserChoice && isWrong) {
+                            stateClass =
+                              "border-danger bg-danger/5 text-danger font-bold";
+                          } else if (isUserChoice && !isPublished) {
+                            stateClass =
+                              "border-primary bg-primary/5 text-primary font-bold shadow-[0_0_15px_rgba(79,70,229,0.1)]";
+                          }
+
+                          return (
+                            <div
+                              key={opt.id}
+                              className={`relative p-4 rounded-2xl border-2 transition-all flex items-start gap-4 overflow-hidden ${stateClass}`}
+                            >
+                              <div
+                                className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-xs font-black ${
+                                  isTheCorrectAnswer
+                                    ? "bg-success text-white"
+                                    : isUserChoice && isWrong
+                                      ? "bg-danger text-white"
+                                      : isUserChoice && !isPublished
+                                        ? "bg-primary text-white"
+                                        : "bg-card-hover"
+                                }`}
+                              >
+                                {opt.id}
+                              </div>
+                              <span className="text-sm pt-0.5 flex-1">
+                                {opt.text}
+                              </span>
+
+                              {isUserChoice && (
+                                <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-foreground text-background text-[9px] font-black rounded-full uppercase">
+                                  Your Choice
+                                </span>
+                              )}
+                              {isTheCorrectAnswer && !isUserChoice && (
+                                <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-success text-white text-[9px] font-black rounded-full uppercase">
+                                  Correct Answer
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {isPublished && r.explanation && (
                       <div className="mt-4 p-5 rounded-2xl bg-card-hover border border-border">

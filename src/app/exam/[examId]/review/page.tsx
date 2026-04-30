@@ -14,6 +14,9 @@ interface AnswerState {
   selected_option_id: string | null;
   is_bookmarked: boolean;
   is_skipped: boolean;
+  code_answer?: string | null;
+  test_pass_count?: number;
+  test_fail_count?: number;
 }
 
 interface Question {
@@ -200,7 +203,7 @@ export default function ReviewExam({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="screen-loader">
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );
@@ -208,14 +211,19 @@ export default function ReviewExam({
 
   const answerMap = new Map(answers.map((a) => [a.question_id, a]));
 
-  const answered = questions.filter((q) => answerMap.get(q.id)?.selected_option_id);
-  const skipped = questions.filter(
-    (q) => answerMap.get(q.id)?.is_skipped && !answerMap.get(q.id)?.selected_option_id
-  );
+  const answered = questions.filter((q) => {
+    const a = answerMap.get(q.id);
+    return a?.selected_option_id || a?.code_answer?.trim();
+  });
+  const skipped = questions.filter((q) => {
+    const a = answerMap.get(q.id);
+    return a?.is_skipped && !a?.selected_option_id && !a?.code_answer?.trim();
+  });
   const bookmarked = questions.filter((q) => answerMap.get(q.id)?.is_bookmarked);
-  const unanswered = questions.filter(
-    (q) => !answerMap.get(q.id)?.selected_option_id && !answerMap.get(q.id)?.is_skipped
-  );
+  const unanswered = questions.filter((q) => {
+    const a = answerMap.get(q.id);
+    return !a?.selected_option_id && !a?.code_answer?.trim() && !a?.is_skipped;
+  });
 
   const isUrgent = timeLeft !== null && timeLeft < 300;
 

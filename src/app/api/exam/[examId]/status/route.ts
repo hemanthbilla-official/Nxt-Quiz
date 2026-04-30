@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
 
 // SEC-03: Require authentication before exposing exam metadata
 export async function GET(
@@ -16,10 +17,10 @@ export async function GET(
 
   // BUG-01: Fix operator precedence
   let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
+  const isLocal = isSafeLocalBypassEnabled();
   
   if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
+    userId = LOCAL_STUDENT_ID;
   }
 
   if (!userId) {

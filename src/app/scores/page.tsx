@@ -62,7 +62,7 @@ export default function MyScores() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="screen-loader">
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );

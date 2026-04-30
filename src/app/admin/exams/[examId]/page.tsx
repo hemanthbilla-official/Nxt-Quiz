@@ -267,8 +267,8 @@ export default function ExamControl({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full p-20">
-        <div className="text-center">
+      <div className="screen-loader">
+        <div className="screen-loader-content">
           <div
             className="spinner mx-auto mb-4"
             style={{ width: 40, height: 40 }}

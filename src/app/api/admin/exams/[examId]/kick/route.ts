@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 // POST — kick a participant from the exam
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ examId: string }> }
 ) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { examId } = await params;
   const admin = await getAdminUser();
   if (!admin) {

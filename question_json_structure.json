@@ -1,0 +1,413 @@
+{
+  "fileName": "questions.json",
+  "purpose": "Use this guide to create an upload-ready questions JSON file for the Nxt-Quiz admin exam upload flow.",
+  "uploadFormat": {
+    "instruction": "The actual file you upload must be a top-level JSON array. Do not upload this guide object directly.",
+    "shape": [
+      "question object 1",
+      "question object 2",
+      "question object 3"
+    ]
+  },
+  "sharedFields": {
+    "id": {
+      "required": false,
+      "type": "string",
+      "instruction": "Optional stable question ID. If omitted, the app generates one automatically. Example: q-react-state-001."
+    },
+    "topic": {
+      "required": false,
+      "type": "string",
+      "instruction": "Question topic shown in admin analytics. Example: React Hooks, JavaScript Arrays."
+    },
+    "difficulty": {
+      "required": false,
+      "type": "string",
+      "instruction": "Difficulty label. Recommended values: Basic, Intermediate, Advanced."
+    },
+    "questionType": {
+      "required": true,
+      "type": "string",
+      "allowedValues": [
+        "theory",
+        "code-output",
+        "spot-the-bug",
+        "conceptual",
+        "debugging",
+        "programming"
+      ],
+      "instruction": "Use programming only for JavaScript function or React component coding challenges."
+    },
+    "question": {
+      "required": true,
+      "type": "string",
+      "instruction": "The question prompt shown to the student."
+    },
+    "codeSnippet": {
+      "required": false,
+      "type": "string",
+      "instruction": "Optional code block shown with the prompt. Use an empty string when not needed."
+    },
+    "explanation": {
+      "required": false,
+      "type": "string",
+      "instruction": "Admin/result explanation. For programming questions, explain the expected approach."
+    },
+    "tags": {
+      "required": false,
+      "type": "array of strings",
+      "instruction": "Useful for filtering or analytics. Example: [\"react\", \"hooks\"]."
+    },
+    "points": {
+      "required": false,
+      "type": "number",
+      "instruction": "Question score value. If exam linking defaults points elsewhere, this may not control final exam points."
+    }
+  },
+  "mcqQuestionStructure": {
+    "instruction": "Use this structure for theory, code-output, spot-the-bug, conceptual, and debugging questions.",
+    "requiredFields": [
+      "questionType",
+      "question",
+      "options",
+      "correctOptionId"
+    ],
+    "rules": [
+      "options must be an array with at least 2 option objects.",
+      "Each option must have id and text.",
+      "correctOptionId must match one option id.",
+      "Recommended option IDs are A, B, C, and D."
+    ],
+    "template": {
+      "id": "q-mcq-example-001",
+      "topic": "JavaScript Fundamentals",
+      "difficulty": "Basic",
+      "questionType": "theory",
+      "question": "Write the question prompt here.",
+      "codeSnippet": "Optional code snippet here.",
+      "options": [
+        {
+          "id": "A",
+          "text": "First option"
+        },
+        {
+          "id": "B",
+          "text": "Second option"
+        },
+        {
+          "id": "C",
+          "text": "Third option"
+        },
+        {
+          "id": "D",
+          "text": "Fourth option"
+        }
+      ],
+      "correctOptionId": "A",
+      "explanation": "Explain why the correct option is correct.",
+      "tags": [
+        "javascript"
+      ],
+      "points": 1
+    }
+  },
+  "javascriptFunctionProgrammingStructure": {
+    "instruction": "Use this structure for programming questions where students write a plain JavaScript function.",
+    "requiredFields": [
+      "questionType",
+      "question",
+      "starterCode",
+      "functionName",
+      "challengeMode",
+      "testCases"
+    ],
+    "rules": [
+      "questionType must be programming.",
+      "challengeMode must be function.",
+      "functionName must match the function students must define.",
+      "options should be an empty array.",
+      "correctOptionId should be null.",
+      "Each test case input must be an array of arguments passed to the function.",
+      "Each test case expected value is compared with the function return value using JSON equality.",
+      "Mark visible tests with public: true.",
+      "Mark hidden tests with hidden: true."
+    ],
+    "template": {
+      "id": "q-js-function-example-001",
+      "topic": "JavaScript Functions",
+      "difficulty": "Basic",
+      "questionType": "programming",
+      "question": "Write a function named addNumbers that returns the sum of two numbers.",
+      "codeSnippet": "",
+      "options": [],
+      "correctOptionId": null,
+      "explanation": "The function should return a + b.",
+      "tags": [
+        "javascript",
+        "functions"
+      ],
+      "points": 2,
+      "language": "javascript",
+      "challengeMode": "function",
+      "functionName": "addNumbers",
+      "starterCode": "function addNumbers(a, b) {\n  // Return the sum of a and b.\n}\n",
+      "testCases": [
+        {
+          "id": "tc1",
+          "name": "Adds positive numbers",
+          "input": [
+            2,
+            3
+          ],
+          "expected": 5,
+          "public": true
+        },
+        {
+          "id": "tc2",
+          "name": "Adds negative numbers",
+          "input": [
+            -2,
+            -3
+          ],
+          "expected": -5,
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "reactComponentProgrammingStructure": {
+    "instruction": "Use this structure for programming questions where students write React code. App.jsx acts as the entry point and can be used for routing, context API, local storage, and rendering other components.",
+    "requiredFields": [
+      "questionType",
+      "question",
+      "starterCode",
+      "challengeMode",
+      "testCases"
+    ],
+    "rules": [
+      "questionType must be programming.",
+      "challengeMode must be component.",
+      "Use App.jsx-style starter code with export default.",
+      "For a single-file React question, use starterCode as the App.jsx content.",
+      "For a multi-file React question, use starterFiles instead of starterCode.",
+      "starterFiles must include App.jsx because App.jsx is the React entry file.",
+      "App component typically does not receive props. It handles routing, providers, or rendering child components.",
+      "Supported starterFiles languages are javascript and css.",
+      "Supported file name endings are .js, .jsx, and .css.",
+      "functionName is used to specify which component the test cases should mount and test (e.g., 'App' or 'WelcomeMessage'). If omitted, it defaults to App.",
+      "options should be an empty array.",
+      "correctOptionId should be null.",
+      "Each test case props object is passed directly to the component specified in functionName.",
+      "expectedElement checks that the rendered HTML contains that element tag.",
+      "expectedContains checks that the rendered HTML contains every listed string.",
+      "Mark visible tests with public: true.",
+      "Mark hidden tests with hidden: true."
+    ],
+    "template": {
+      "id": "q-react-component-example-001",
+      "topic": "React Components",
+      "difficulty": "Basic",
+      "questionType": "programming",
+      "question": "Create a Greeting component that renders the provided name. Update App.jsx to render the Greeting component.",
+      "codeSnippet": "Students edit the components. App.jsx acts as the entry point without receiving props.",
+      "options": [],
+      "correctOptionId": null,
+      "explanation": "The Greeting component should render the name prop in visible text.",
+      "tags": [
+        "react",
+        "components",
+        "props"
+      ],
+      "points": 2,
+      "language": "javascript",
+      "challengeMode": "component",
+      "functionName": "Greeting",
+      "starterCode": "",
+      "starterFiles": [
+        {
+          "name": "App.jsx",
+          "language": "javascript",
+          "content": "import './styles.css';\nimport { Greeting } from './components/Greeting';\n\nexport default function App() {\n  return (\n    <main className=\"app-shell\">\n      <Greeting name=\"Student\" />\n    </main>\n  );\n}\n"
+        },
+        {
+          "name": "components/Greeting.jsx",
+          "language": "javascript",
+          "content": "export function Greeting({ name }) {\n  return <section>Hello, {name}</section>;\n}\n"
+        },
+        {
+          "name": "styles.css",
+          "language": "css",
+          "content": ".app-shell {\n  padding: 24px;\n  font-family: system-ui, sans-serif;\n}\n"
+        }
+      ],
+      "testCases": [
+        {
+          "id": "tc1",
+          "name": "Greeting renders the provided name",
+          "props": {
+            "name": "Ada Lovelace"
+          },
+          "expectedElement": "section",
+          "expectedContains": [
+            "Ada Lovelace"
+          ],
+          "public": true
+        },
+        {
+          "id": "tc2",
+          "name": "Greeting renders a different name",
+          "props": {
+            "name": "Grace Hopper"
+          },
+          "expectedElement": "section",
+          "expectedContains": [
+            "Grace Hopper"
+          ],
+          "hidden": true
+        }
+      ]
+    }
+  },
+  "uploadReadyExample": [
+    {
+      "id": "q-example-mcq-001",
+      "topic": "React Hooks",
+      "difficulty": "Basic",
+      "questionType": "theory",
+      "question": "Which hook is used to store local component state?",
+      "codeSnippet": "",
+      "options": [
+        {
+          "id": "A",
+          "text": "useState"
+        },
+        {
+          "id": "B",
+          "text": "useRoute"
+        },
+        {
+          "id": "C",
+          "text": "useDatabase"
+        },
+        {
+          "id": "D",
+          "text": "useServer"
+        }
+      ],
+      "correctOptionId": "A",
+      "explanation": "useState stores local state inside a React component.",
+      "tags": [
+        "react",
+        "hooks"
+      ],
+      "points": 1
+    },
+    {
+      "id": "q-example-programming-001",
+      "topic": "JavaScript Functions",
+      "difficulty": "Basic",
+      "questionType": "programming",
+      "question": "Write a function named multiply that returns the product of two numbers.",
+      "codeSnippet": "",
+      "options": [],
+      "correctOptionId": null,
+      "explanation": "Return a * b.",
+      "tags": [
+        "javascript",
+        "functions"
+      ],
+      "points": 2,
+      "language": "javascript",
+      "challengeMode": "function",
+      "functionName": "multiply",
+      "starterCode": "function multiply(a, b) {\n  // Return the product of a and b.\n}\n",
+      "testCases": [
+        {
+          "id": "tc1",
+          "name": "Multiplies positive numbers",
+          "input": [
+            3,
+            4
+          ],
+          "expected": 12,
+          "public": true
+        },
+        {
+          "id": "tc2",
+          "name": "Handles zero",
+          "input": [
+            0,
+            9
+          ],
+          "expected": 0,
+          "hidden": true
+        }
+      ]
+    },
+    {
+      "id": "q-example-react-app-001",
+      "topic": "React App.jsx",
+      "difficulty": "Basic",
+      "questionType": "programming",
+      "question": "Create a WelcomeMessage component that receives a userName prop. Update App.jsx to render this component.",
+      "codeSnippet": "App.jsx acts as the entry point and doesn't take props.",
+      "options": [],
+      "correctOptionId": null,
+      "explanation": "The WelcomeMessage component should render the userName prop and a welcome message.",
+      "tags": [
+        "react",
+        "app-jsx",
+        "components"
+      ],
+      "points": 2,
+      "language": "javascript",
+      "challengeMode": "component",
+      "functionName": "WelcomeMessage",
+      "starterFiles": [
+        {
+          "name": "App.jsx",
+          "language": "javascript",
+          "content": "import './styles.css';\nimport { WelcomeMessage } from './components/WelcomeMessage';\n\nexport default function App() {\n  return (\n    <main className=\"app-shell\">\n      <WelcomeMessage userName=\"Student\" />\n    </main>\n  );\n}\n"
+        },
+        {
+          "name": "components/WelcomeMessage.jsx",
+          "language": "javascript",
+          "content": "export function WelcomeMessage({ userName }) {\n  return <h1>Welcome, {userName}</h1>;\n}\n"
+        },
+        {
+          "name": "styles.css",
+          "language": "css",
+          "content": ".app-shell {\n  padding: 24px;\n  font-family: system-ui, sans-serif;\n}\n"
+        }
+      ],
+      "testCases": [
+        {
+          "id": "tc1",
+          "name": "Renders welcome message",
+          "props": {
+            "userName": "Ada"
+          },
+          "expectedElement": "h1",
+          "expectedContains": [
+            "Welcome",
+            "Ada"
+          ],
+          "public": true
+        },
+        {
+          "id": "tc2",
+          "name": "Renders another user",
+          "props": {
+            "userName": "Grace"
+          },
+          "expectedElement": "h1",
+          "expectedContains": [
+            "Welcome",
+            "Grace"
+          ],
+          "hidden": true
+        }
+      ]
+    }
+  ]
+}

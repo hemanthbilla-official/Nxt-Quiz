@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { nanoid } from "nanoid";
+import { assertSameOriginRequest } from "@/lib/request-security";
+import { normalizeEditorFiles, serializeCodeFiles } from "@/lib/code-answer";
 
 // POST — bulk import questions
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -21,28 +27,63 @@ export async function POST(request: Request) {
     topic?: string;
     difficulty?: string;
     questionType?: string;
+    question_type?: string;
     question: string;
     codeSnippet?: string;
-    options: unknown;
+    code_snippet?: string;
+    options?: unknown;
     correct_option_id?: string;
     correctOptionId?: string;
     explanation?: string;
     tags?: string[];
     points?: number;
+    // Programming fields
+    starterCode?: string;
+    starter_code?: string;
+    starterFiles?: unknown;
+    starter_files?: unknown;
+    functionName?: string;
+    function_name?: string;
+    challengeMode?: string;
+    challenge_mode?: string;
+    testCases?: unknown;
+    test_cases?: unknown;
+    language?: string;
   }
 
-  const formatted = questions.map((q: ImportQuestion) => ({
-    id: q.id || `q-${Math.random().toString(36).substr(2, 9)}`,
-    topic: q.topic || "Unknown",
-    difficulty: q.difficulty || "Basic",
-    question_type: q.questionType || "theory",
-    question: q.question,
-    code_snippet: q.codeSnippet || null,
-    options: typeof q.options === 'string' ? q.options : JSON.stringify(q.options),
-    correct_option_id: q.correct_option_id || q.correctOptionId,
-    explanation: q.explanation || "",
-    tags: q.tags || [],
-  }));
+  const formatted = questions.map((q: ImportQuestion) => {
+    const questionType = q.question_type || q.questionType || "theory";
+    const challengeMode = q.challenge_mode || q.challengeMode || null;
+    const isProgramming = questionType === "programming";
+    const isComponent = isProgramming && challengeMode === "component";
+    const starterFiles = normalizeEditorFiles(q.starter_files || q.starterFiles, []);
+    const starterCode =
+      starterFiles.length > 0
+        ? serializeCodeFiles(starterFiles)
+        : q.starter_code || q.starterCode || null;
+
+    return {
+      id: q.id || `q-${nanoid(12)}`,
+      topic: q.topic || "Unknown",
+      difficulty: q.difficulty || "Basic",
+      question_type: questionType,
+      question: typeof q.question === "string" ? q.question : "",
+      code_snippet: q.code_snippet || q.codeSnippet || null,
+      options: isProgramming
+        ? null
+        : typeof q.options === "string"
+          ? q.options
+          : JSON.stringify(q.options),
+      correct_option_id: isProgramming ? null : q.correct_option_id || q.correctOptionId || null,
+      explanation: q.explanation || "",
+      tags: q.tags || [],
+      starter_code: starterCode,
+      function_name: q.function_name || q.functionName || (isComponent ? "App" : null),
+      challenge_mode: challengeMode,
+      test_cases: q.test_cases || q.testCases || null,
+      language: q.language || "javascript",
+    };
+  });
 
   const { data: insertedQuestions, error } = await supabase
     .from("questions")

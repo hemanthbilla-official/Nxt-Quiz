@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { nanoid } from "nanoid";
 import { getAdminUser } from "@/lib/admin-auth";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 // GET — list all exams
 export async function GET() {
@@ -32,6 +33,9 @@ export async function GET() {
 
 // POST — create new exam
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });

@@ -55,8 +55,8 @@
   --color-danger: var(--danger);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 * {
@@ -67,7 +67,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
 button {
@@ -127,7 +127,7 @@ button:disabled {
   background: var(--card-hover);
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-family: var(--font-geist-mono), 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
   line-height: 1.6;
   overflow-x: auto;
@@ -188,6 +188,22 @@ button:disabled {
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.screen-loader {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+}
+
+.screen-loader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 /* Question navigator dot states */

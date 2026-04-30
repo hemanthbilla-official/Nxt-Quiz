@@ -231,6 +231,10 @@ begin
     raise exception 'Student College ID must be between 3 and 64 characters';
   end if;
 
+  if v_student_college_id !~ '^N24H01[AB][0-9]{4}$' then
+    raise exception 'Invalid student college ID format';
+  end if;
+
   update public.profiles
   set student_college_id = v_student_college_id,
       onboarded_at = coalesce(onboarded_at, now())

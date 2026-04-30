@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
 
   try {
     // 1. Delete all attempt answers (cascades usually but let's be explicit)
-    await supabase.from("attempt_answers").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await supabase.from("attempt_answers").delete().neq("attempt_id", "00000000-0000-0000-0000-000000000000");
     
     // 2. Delete all attempts
     await supabase.from("attempts").delete().neq("id", "00000000-0000-0000-0000-000000000000");

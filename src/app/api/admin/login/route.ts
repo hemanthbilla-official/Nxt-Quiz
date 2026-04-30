@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { timingSafeEqual } from "crypto";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 // SEC-04: Basic in-memory rate limiter
 const loginAttempts = new Map<string, { count: number; lastAttempt: number }>();
@@ -18,6 +19,9 @@ function safeCompare(a: string, b: string): boolean {
 }
 
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   // SEC-04: Rate limiting
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
   const now = Date.now();

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
 import { isValidStudentId } from "@/lib/student-id";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 // GET — list all students
 export async function GET() {
@@ -39,6 +40,9 @@ export async function GET() {
 
 // DELETE — remove a student entirely (delete profile + auth user)
 export async function DELETE(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -104,6 +108,9 @@ export async function DELETE(request: Request) {
 
 // PATCH — update a student's profile
 export async function PATCH(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });

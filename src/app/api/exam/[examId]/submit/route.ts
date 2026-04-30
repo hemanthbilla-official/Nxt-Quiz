@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { scoreAttempt, SUBMISSION_GRACE_MS } from "@/lib/exam-scoring";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ examId: string }> },
 ) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { examId } = await params;
-  const { attemptId } = await request.json();
+  const { attemptId } = await request.json().catch(() => ({}));
+
+  if (typeof attemptId !== "string") {
+    return NextResponse.json({ error: "attemptId is required" }, { status: 400 });
+  }
 
   const supabase = await createClient();
   const {
@@ -15,23 +25,20 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
-  
+  const isLocal = isSafeLocalBypassEnabled();
+
   if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
+    userId = LOCAL_STUDENT_ID;
   }
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
   }
 
-  // Use admin client for scoring
   const admin = createAdminClient();
-
-  // SEC-06: Add exam_id cross-check to prevent cross-exam submission
   const { data: attempt } = await admin
     .from("attempts")
-    .select("*")
+    .select("id, status, server_due_at")
     .eq("id", attemptId)
     .eq("user_id", userId)
     .eq("exam_id", examId)
@@ -45,59 +52,34 @@ export async function POST(
     return NextResponse.json({ message: "Already submitted" });
   }
 
-  // Calculate score
-  const { data: questionAnswers } = await admin
-    .from("attempt_answers")
-    .select("question_id, selected_option_id")
-    .eq("attempt_id", attemptId);
-
-  const { data: examQuestions } = await admin
-    .from("exam_questions")
-    .select("question_id, points")
-    .eq("exam_id", examId);
-
-  // SEC-06: Scope questions fetch to this exam's question IDs only
-  const questionIds = (examQuestions || []).map(eq => eq.question_id);
-  const { data: questions } = await admin
-    .from("questions")
-    .select("id, correct_option_id")
-    .in("id", questionIds.length > 0 ? questionIds : ["__none__"]);
-
-  let totalScore = 0;
-  const maxScore = examQuestions?.reduce((sum, q) => sum + q.points, 0) || 0;
-
-  if (questionAnswers && questions && examQuestions) {
-    const correctMap = new Map(
-      questions.map((q) => [q.id, q.correct_option_id]),
-    );
-    const pointsMap = new Map(
-      examQuestions.map((eq) => [eq.question_id, eq.points]),
-    );
-
-    questionAnswers.forEach((a) => {
-      if (a.selected_option_id === correctMap.get(a.question_id)) {
-        totalScore += pointsMap.get(a.question_id) || 1;
-      }
-    });
+  const dueAt = new Date(attempt.server_due_at).getTime();
+  if (Date.now() > dueAt + SUBMISSION_GRACE_MS) {
+    return NextResponse.json({ error: "Submission window has expired" }, { status: 403 });
   }
 
-  // Update attempt
+  const { totalScore, maxScore } = await scoreAttempt({
+    supabase: admin,
+    examId,
+    attemptId,
+  });
+
+  const submittedAt = new Date().toISOString();
+
   await admin
     .from("attempts")
     .update({
       status: "submitted",
-      submitted_at: new Date().toISOString(),
+      submitted_at: submittedAt,
       total_score: totalScore,
       max_score: maxScore,
     })
     .eq("id", attemptId);
 
-  // Update participant
   await admin
     .from("exam_participants")
     .update({
       status: "submitted",
-      submitted_at: new Date().toISOString(),
+      submitted_at: submittedAt,
     })
     .eq("exam_id", examId)
     .eq("user_id", userId);

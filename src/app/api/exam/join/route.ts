@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { examCode } = await request.json();
 
   if (!examCode) {
@@ -16,10 +21,10 @@ export async function POST(request: Request) {
 
   // BUG-01: Fix operator precedence with parentheses
   let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
+  const isLocal = isSafeLocalBypassEnabled();
   
   if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
+    userId = LOCAL_STUDENT_ID;
   }
 
   if (!userId) {
@@ -27,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   // Check profile onboarding (skip for local bypass dummy ID which is upserted in onboarding page)
-  if (userId !== "00000000-0000-0000-0000-000000000001") {
+  if (userId !== LOCAL_STUDENT_ID) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("student_college_id, onboarded_at")

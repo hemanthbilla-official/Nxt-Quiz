@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { isSafeLocalBypassEnabled, LOCAL_ADMIN_ID } from "@/lib/environment";
 import { User } from "@supabase/supabase-js";
 
 export async function getAdminUser(): Promise<User | null> {
-  const isLocal = process.env.ENVIRONMENT === "local";
+  const isLocal = isSafeLocalBypassEnabled();
   const supabase = await createClient();
   
   const {
@@ -12,7 +13,7 @@ export async function getAdminUser(): Promise<User | null> {
   // LOCAL BYPASS: If no user and in local mode, return a dummy admin user
   if (!user && isLocal) {
     return {
-      id: "00000000-0000-0000-0000-000000000000", // Constant local dummy admin ID
+      id: LOCAL_ADMIN_ID,
       email: "admin@local.test",
       user_metadata: { full_name: "Local Administrator" },
       aud: "authenticated",

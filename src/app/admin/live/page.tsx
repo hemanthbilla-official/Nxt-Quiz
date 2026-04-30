@@ -52,7 +52,7 @@ export default function LiveMonitor() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full p-12">
+      <div className="screen-loader">
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );

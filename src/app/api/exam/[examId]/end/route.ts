@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { scoreAttempt } from "@/lib/exam-scoring";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ examId: string }> }
 ) {
-  const { examId } = await params;
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
 
+  const { examId } = await params;
   const admin = await getAdminUser();
+
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
   const supabase = createAdminClient();
 
-  // Get exam
   const { data: exam } = await supabase
     .from("exams")
     .select("id, status")
@@ -33,77 +37,46 @@ export async function POST(
     );
   }
 
-  // Auto-submit all active attempts with server-side scoring
   const { data: activeAttempts } = await supabase
     .from("attempts")
-    .select("id, exam_id, user_id")
+    .select("id, user_id")
     .eq("exam_id", examId)
     .eq("status", "active");
 
-  if (activeAttempts && activeAttempts.length > 0) {
-    // Get questions and correct answers for scoring
-    const { data: examQuestions } = await supabase
-      .from("exam_questions")
-      .select("question_id, points")
-      .eq("exam_id", examId);
+  const submittedAt = new Date().toISOString();
 
-    // SEC-07: Scope to this exam's questions instead of fetching entire question bank
-    const questionIds = (examQuestions || []).map(eq => eq.question_id);
-    const { data: questions } = await supabase
-      .from("questions")
-      .select("id, correct_option_id")
-      .in("id", questionIds.length > 0 ? questionIds : ["__none__"]);
+  for (const attempt of activeAttempts || []) {
+    const { totalScore, maxScore } = await scoreAttempt({
+      supabase,
+      examId,
+      attemptId: attempt.id,
+    });
 
-    const correctMap = new Map(
-      (questions || []).map((q) => [q.id, q.correct_option_id])
-    );
-    const pointsMap = new Map(
-      (examQuestions || []).map((eq) => [eq.question_id, eq.points])
-    );
-    const maxScore =
-      (examQuestions || []).reduce((sum, q) => sum + q.points, 0) || 0;
-
-    for (const attempt of activeAttempts) {
-      const { data: answers } = await supabase
-        .from("attempt_answers")
-        .select("question_id, selected_option_id")
-        .eq("attempt_id", attempt.id);
-
-      let totalScore = 0;
-      (answers || []).forEach((a) => {
-        if (a.selected_option_id === correctMap.get(a.question_id)) {
-          totalScore += pointsMap.get(a.question_id) || 1;
-        }
-      });
-
-      await supabase
-        .from("attempts")
-        .update({
-          status: "submitted",
-          submitted_at: new Date().toISOString(),
-          total_score: totalScore,
-          max_score: maxScore,
-        })
-        .eq("id", attempt.id);
-    }
-
-    // Update all active participants to submitted
     await supabase
-      .from("exam_participants")
+      .from("attempts")
       .update({
         status: "submitted",
-        submitted_at: new Date().toISOString(),
+        submitted_at: submittedAt,
+        total_score: totalScore,
+        max_score: maxScore,
       })
-      .eq("exam_id", examId)
-      .eq("status", "active");
+      .eq("id", attempt.id);
   }
 
-  // Close the exam
+  await supabase
+    .from("exam_participants")
+    .update({
+      status: "submitted",
+      submitted_at: submittedAt,
+    })
+    .eq("exam_id", examId)
+    .eq("status", "active");
+
   await supabase
     .from("exams")
     .update({
       status: "closed",
-      closes_at: new Date().toISOString(),
+      closes_at: submittedAt,
     })
     .eq("id", examId);
 

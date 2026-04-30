@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ examId: string }> },
 ) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { examId } = await params;
 
   const supabase = await createClient();
@@ -15,8 +20,8 @@ export async function POST(
 
   // BUG-01: Fix operator precedence
   let userId = user?.id;
-  if (!userId && (process.env.ENVIRONMENT === "local")) {
-    userId = "00000000-0000-0000-0000-000000000001";
+  if (!userId && isSafeLocalBypassEnabled()) {
+    userId = LOCAL_STUDENT_ID;
   }
 
   if (!userId) {

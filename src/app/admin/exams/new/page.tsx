@@ -3,19 +3,42 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const VALID_QUESTION_TYPES = ["theory", "code-output", "spot-the-bug", "conceptual", "debugging"];
+const VALID_QUESTION_TYPES = [
+  "theory",
+  "code-output",
+  "spot-the-bug",
+  "conceptual",
+  "debugging",
+  "programming",
+];
+const VALID_CHALLENGE_MODES = ["function", "component"];
+const FUNCTION_NAME_PATTERN = /^[A-Za-z_$][\w$]{0,80}$/;
 
 interface ValidatedQuestion {
   id?: string;
   topic?: string;
   difficulty?: string;
   questionType?: string;
+  question_type?: string;
   question: string;
   codeSnippet?: string | null;
-  options: { id: string; text: string }[];
-  correctOptionId: string;
+  options?: { id: string; text: string }[];
+  correctOptionId?: string | null;
+  correct_option_id?: string | null;
   explanation?: string;
   tags?: string[];
+  points?: number;
+  starterCode?: string;
+  starter_code?: string;
+  starterFiles?: unknown[];
+  starter_files?: unknown[];
+  functionName?: string;
+  function_name?: string;
+  challengeMode?: string;
+  challenge_mode?: string;
+  testCases?: unknown[];
+  test_cases?: unknown[];
+  language?: string;
 }
 
 interface ValidationError {
@@ -36,44 +59,130 @@ function validateQuestions(questions: unknown[]): { valid: boolean; errors: Vali
       qErrors.push("Missing or empty \"question\" field (required string)");
     }
 
-    // Check options
-    if (!q.options) {
-      qErrors.push("Missing \"options\" field (required array of 4 option objects)");
-    } else if (!Array.isArray(q.options)) {
-      qErrors.push("\"options\" must be an array");
-    } else {
-      if (q.options.length < 2) {
-        qErrors.push(`\"options\" must have at least 2 entries, found ${q.options.length}`);
+    // Check questionType (optional but must be valid if provided)
+    const questionType = q.questionType || q.question_type || "theory";
+    if (typeof questionType !== "string" || !VALID_QUESTION_TYPES.includes(questionType)) {
+      qErrors.push(`Invalid \"questionType\": \"${String(questionType)}\". Allowed values: ${VALID_QUESTION_TYPES.join(", ")}`);
+    }
+
+    if (questionType === "programming") {
+      const starterCode = q.starterCode || q.starter_code;
+      const starterFiles = q.starterFiles || q.starter_files;
+      const functionName = q.functionName || q.function_name;
+      const challengeMode = q.challengeMode || q.challenge_mode || "function";
+      const testCases = q.testCases || q.test_cases;
+
+      if (
+        (typeof starterCode !== "string" || starterCode.trim().length === 0) &&
+        (!Array.isArray(starterFiles) || starterFiles.length === 0)
+      ) {
+        qErrors.push("Programming question missing \"starterCode\" or \"starterFiles\" field");
       }
-      for (let j = 0; j < q.options.length; j++) {
-        const opt = q.options[j] as Record<string, unknown>;
-        if (!opt || typeof opt !== "object") {
-          qErrors.push(`Option ${j + 1}: must be an object with \"id\" and \"text\"`);
-        } else {
-          if (!opt.id || typeof opt.id !== "string") {
-            qErrors.push(`Option ${j + 1}: missing or invalid \"id\" (expected string like \"A\", \"B\", etc.)`);
+
+      if (Array.isArray(starterFiles)) {
+        starterFiles.forEach((file, index) => {
+          const starterFile = file as Record<string, unknown>;
+          if (!starterFile || typeof starterFile !== "object" || Array.isArray(starterFile)) {
+            qErrors.push(`Starter file ${index + 1}: must be an object`);
+            return;
           }
-          if (!opt.text || typeof opt.text !== "string" || opt.text.trim().length === 0) {
-            qErrors.push(`Option ${j + 1}: missing or empty \"text\"`);
+          if (typeof starterFile.name !== "string" || !/\.(js|jsx|css)$/.test(starterFile.name)) {
+            qErrors.push(`Starter file ${index + 1}: missing valid \"name\" ending in .js, .jsx, or .css`);
+          }
+          if (typeof starterFile.content !== "string") {
+            qErrors.push(`Starter file ${index + 1}: missing \"content\" string`);
+          }
+        });
+      }
+
+      if (typeof challengeMode !== "string" || !VALID_CHALLENGE_MODES.includes(challengeMode)) {
+        qErrors.push(`Invalid \"challengeMode\": \"${String(challengeMode)}\". Allowed values: ${VALID_CHALLENGE_MODES.join(", ")}`);
+      }
+
+      if (challengeMode === "function") {
+        if (typeof functionName !== "string" || !FUNCTION_NAME_PATTERN.test(functionName)) {
+          qErrors.push("Function programming question missing or invalid \"functionName\" field");
+        }
+      } else if (
+        functionName !== undefined &&
+        (typeof functionName !== "string" || !FUNCTION_NAME_PATTERN.test(functionName))
+      ) {
+        qErrors.push("React programming question has an invalid \"functionName\" field; omit it or use \"App\"");
+      }
+
+      if (!Array.isArray(testCases) || testCases.length < 1) {
+        qErrors.push("Programming question must include at least one test case in \"testCases\"");
+      } else {
+        testCases.forEach((testCase, index) => {
+          const tc = testCase as Record<string, unknown>;
+          if (!tc || typeof tc !== "object" || Array.isArray(tc)) {
+            qErrors.push(`Test case ${index + 1}: must be an object`);
+            return;
+          }
+
+          if (challengeMode === "function") {
+            if (tc.input !== undefined && !Array.isArray(tc.input)) {
+              qErrors.push(`Test case ${index + 1}: \"input\" must be an array when provided`);
+            }
+            if (!Object.prototype.hasOwnProperty.call(tc, "expected")) {
+              qErrors.push(`Test case ${index + 1}: missing \"expected\" value`);
+            }
+          }
+
+          if (challengeMode === "component") {
+            if (tc.props !== undefined && (typeof tc.props !== "object" || Array.isArray(tc.props))) {
+              qErrors.push(`Test case ${index + 1}: \"props\" must be an object when provided`);
+            }
+            if (
+              tc.expectedElement !== undefined &&
+              typeof tc.expectedElement !== "string"
+            ) {
+              qErrors.push(`Test case ${index + 1}: \"expectedElement\" must be a string when provided`);
+            }
+            if (
+              !Array.isArray(tc.expectedContains) ||
+              tc.expectedContains.some((item) => typeof item !== "string")
+            ) {
+              qErrors.push(`Test case ${index + 1}: \"expectedContains\" must be an array of strings`);
+            }
+          }
+        });
+      }
+    } else {
+      // Check options for MCQ-style questions
+      if (!q.options) {
+        qErrors.push("Missing \"options\" field (required array of option objects)");
+      } else if (!Array.isArray(q.options)) {
+        qErrors.push("\"options\" must be an array");
+      } else {
+        if (q.options.length < 2) {
+          qErrors.push(`\"options\" must have at least 2 entries, found ${q.options.length}`);
+        }
+        for (let j = 0; j < q.options.length; j++) {
+          const opt = q.options[j] as Record<string, unknown>;
+          if (!opt || typeof opt !== "object") {
+            qErrors.push(`Option ${j + 1}: must be an object with \"id\" and \"text\"`);
+          } else {
+            if (!opt.id || typeof opt.id !== "string") {
+              qErrors.push(`Option ${j + 1}: missing or invalid \"id\" (expected string like \"A\", \"B\", etc.)`);
+            }
+            if (!opt.text || typeof opt.text !== "string" || opt.text.trim().length === 0) {
+              qErrors.push(`Option ${j + 1}: missing or empty \"text\"`);
+            }
           }
         }
       }
-    }
 
-    // Check correctOptionId
-    const correctId = q.correctOptionId || q.correct_option_id;
-    if (!correctId || typeof correctId !== "string") {
-      qErrors.push("Missing \"correctOptionId\" field (required string matching one of the option IDs)");
-    } else if (Array.isArray(q.options)) {
-      const optionIds = q.options.map((o: Record<string, unknown>) => o.id);
-      if (!optionIds.includes(correctId)) {
-        qErrors.push(`\"correctOptionId\" value \"${correctId}\" does not match any option ID (${optionIds.join(", ")})`);
+      // Check correctOptionId for MCQ-style questions
+      const correctId = q.correctOptionId || q.correct_option_id;
+      if (!correctId || typeof correctId !== "string") {
+        qErrors.push("Missing \"correctOptionId\" field (required string matching one of the option IDs)");
+      } else if (Array.isArray(q.options)) {
+        const optionIds = q.options.map((o: Record<string, unknown>) => o.id);
+        if (!optionIds.includes(correctId)) {
+          qErrors.push(`\"correctOptionId\" value \"${correctId}\" does not match any option ID (${optionIds.join(", ")})`);
+        }
       }
-    }
-
-    // Check questionType (optional but must be valid if provided)
-    if (q.questionType && typeof q.questionType === "string" && !VALID_QUESTION_TYPES.includes(q.questionType)) {
-      qErrors.push(`Invalid \"questionType\": \"${q.questionType}\". Allowed values: ${VALID_QUESTION_TYPES.join(", ")}`);
     }
 
     // Check tags (optional but must be array of strings)

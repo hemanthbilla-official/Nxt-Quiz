@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { nanoid } from "nanoid";
+import { assertSameOriginRequest } from "@/lib/request-security";
+import { normalizeEditorFiles, serializeCodeFiles } from "@/lib/code-answer";
 
 // GET — list all questions from the bank (STD-09: with optional pagination)
 export async function GET(_request: Request) {
@@ -44,6 +47,9 @@ export async function GET(_request: Request) {
 
 // POST — create a new question
 export async function POST(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
@@ -60,20 +66,51 @@ export async function POST(request: Request) {
     correct_option_id,
     explanation,
     tags,
+    // Programming question fields
+    starter_code,
+    starter_files,
+    function_name,
+    challenge_mode,
+    test_cases,
+    language,
+    points,
   } = body;
 
-  // Request Validation
+  const isProgramming = question_type === "programming";
+  const starterFiles = normalizeEditorFiles(starter_files, []);
+  const normalizedStarterCode =
+    starterFiles.length > 0 ? serializeCodeFiles(starterFiles) : starter_code;
+  const normalizedChallengeMode = challenge_mode || "function";
+  const normalizedFunctionName =
+    isProgramming && normalizedChallengeMode === "component"
+      ? function_name || "App"
+      : function_name;
+
+  // Request Validation — programming questions don't need options/correct_option_id
+  if (!topic || typeof topic !== "string" || !question || typeof question !== "string") {
+    return NextResponse.json(
+      { error: "Topic and question are required." },
+      { status: 400 }
+    );
+  }
+
+  if (!isProgramming && (!correct_option_id || !Array.isArray(options) || options.length < 2)) {
+    return NextResponse.json(
+      { error: "MCQ questions require options (min 2) and a correct answer." },
+      { status: 400 }
+    );
+  }
+
   if (
-    !topic ||
-    typeof topic !== "string" ||
-    !question ||
-    typeof question !== "string" ||
-    !correct_option_id ||
-    !Array.isArray(options) ||
-    options.length < 2
+    isProgramming &&
+    (!normalizedStarterCode ||
+      !normalizedFunctionName ||
+      !normalizedChallengeMode ||
+      !Array.isArray(test_cases) ||
+      test_cases.length < 1)
   ) {
     return NextResponse.json(
-      { error: "Invalid question payload. Topic, question, options (min 2), and correct answer are required." },
+      { error: "Programming questions require starter_code, function_name, challenge_mode, and at least 1 test case." },
       { status: 400 }
     );
   }
@@ -83,20 +120,40 @@ export async function POST(request: Request) {
     s.replace(/[<>]/g, (c) => (c === "<" ? "&lt;" : "&gt;"));
 
   const supabase = createAdminClient();
+  const id = typeof body.id === "string" && body.id.trim()
+    ? body.id.trim()
+    : `q-${nanoid(12)}`;
+
+  const insertData: Record<string, unknown> = {
+    id,
+    topic: sanitize(topic.trim()),
+    difficulty: difficulty || "Basic",
+    question_type: question_type || "theory",
+    question: sanitize(question.trim()),
+    points: points || 1,
+    tags: tags || [],
+  };
+
+  if (isProgramming) {
+    insertData.starter_code = normalizedStarterCode;
+    insertData.function_name = normalizedFunctionName;
+    insertData.challenge_mode = normalizedChallengeMode;
+    insertData.test_cases = test_cases;
+    insertData.language = language || "javascript";
+    // Programming questions don't need MCQ fields
+    insertData.options = null;
+    insertData.correct_option_id = null;
+    insertData.explanation = null;
+  } else {
+    insertData.code_snippet = code_snippet ? sanitize(code_snippet) : null;
+    insertData.options = typeof options === "string" ? options : JSON.stringify(options);
+    insertData.correct_option_id = correct_option_id;
+    insertData.explanation = explanation ? sanitize(explanation) : "";
+  }
 
   const { data, error } = await supabase
     .from("questions")
-    .insert({
-      topic: sanitize(topic.trim()),
-      difficulty: difficulty || "Basic",
-      question_type: question_type || "theory",
-      question: sanitize(question.trim()),
-      code_snippet: code_snippet ? sanitize(code_snippet) : null,
-      options: typeof options === "string" ? options : JSON.stringify(options),
-      correct_option_id,
-      explanation: explanation ? sanitize(explanation) : "",
-      tags: tags || [],
-    })
+    .insert(insertData)
     .select()
     .single();
 
@@ -109,6 +166,9 @@ export async function POST(request: Request) {
 
 // DELETE — bulk delete all questions
 export async function DELETE(request: Request) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });

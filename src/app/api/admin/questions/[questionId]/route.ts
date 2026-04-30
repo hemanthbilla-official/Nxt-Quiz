@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { assertSameOriginRequest } from "@/lib/request-security";
+
+const sanitize = (value: string) =>
+  value.replace(/[<>]/g, (char) => (char === "<" ? "&lt;" : "&gt;"));
 
 // GET — get a single question
 export async function GET(
@@ -33,6 +37,9 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ questionId: string }> }
 ) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { questionId } = await params;
   const admin = await getAdminUser();
   if (!admin) {
@@ -40,30 +47,36 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { topic, difficulty, question_type, question, code_snippet, options, correct_option_id, explanation, tags } = body;
+  const {
+    topic, difficulty, question_type, question, code_snippet,
+    options, correct_option_id, explanation, tags,
+    // Programming fields
+    starter_code, function_name, challenge_mode, test_cases, language, points,
+  } = body;
 
   const supabase = createAdminClient();
 
-  const updates: {
-    topic?: string;
-    difficulty?: string;
-    question_type?: string;
-    question?: string;
-    code_snippet?: string;
-    options?: string;
-    correct_option_id?: string;
-    explanation?: string;
-    tags?: string[];
-  } = {};
-  if (topic) updates.topic = topic;
+  const updates: Record<string, unknown> = {};
+  if (topic && typeof topic === "string") updates.topic = sanitize(topic.trim());
   if (difficulty) updates.difficulty = difficulty;
   if (question_type) updates.question_type = question_type;
-  if (question) updates.question = question;
-  if (code_snippet !== undefined) updates.code_snippet = code_snippet;
+  if (question && typeof question === "string") updates.question = sanitize(question.trim());
+  if (code_snippet !== undefined) {
+    updates.code_snippet = typeof code_snippet === "string" ? sanitize(code_snippet) : null;
+  }
   if (options) updates.options = typeof options === 'string' ? options : JSON.stringify(options);
-  if (correct_option_id) updates.correct_option_id = correct_option_id;
-  if (explanation) updates.explanation = explanation;
+  if (correct_option_id !== undefined) updates.correct_option_id = correct_option_id;
+  if (explanation !== undefined) {
+    updates.explanation = typeof explanation === "string" ? sanitize(explanation) : "";
+  }
   if (tags) updates.tags = tags;
+  if (points !== undefined) updates.points = points;
+  // Programming fields
+  if (starter_code !== undefined) updates.starter_code = starter_code;
+  if (function_name !== undefined) updates.function_name = function_name;
+  if (challenge_mode !== undefined) updates.challenge_mode = challenge_mode;
+  if (test_cases !== undefined) updates.test_cases = test_cases;
+  if (language !== undefined) updates.language = language;
 
   const { data, error } = await supabase
     .from("questions")
@@ -84,6 +97,9 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ questionId: string }> }
 ) {
+  const originError = assertSameOriginRequest(request);
+  if (originError) return originError;
+
   const { questionId } = await params;
   const admin = await getAdminUser();
   if (!admin) {

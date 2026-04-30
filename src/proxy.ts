@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { assertLocalBypassIsNotProduction, isSafeLocalBypassEnabled } from "@/lib/environment";
 
 export async function proxy(request: NextRequest) {
+  assertLocalBypassIsNotProduction();
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -26,7 +28,7 @@ export async function proxy(request: NextRequest) {
   );
 
   const path = request.nextUrl.pathname;
-  const isLocal = process.env.ENVIRONMENT === "local";
+  const isLocal = isSafeLocalBypassEnabled();
 
   // 1. Skip static assets
   if (

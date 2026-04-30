@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
 
 export async function GET(
   request: Request,
@@ -13,10 +14,10 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
+  const isLocal = isSafeLocalBypassEnabled();
   
   if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
+    userId = LOCAL_STUDENT_ID;
   }
 
   if (!userId) {
@@ -45,10 +46,10 @@ export async function GET(
     );
   }
 
-  // 2. Fetch the student's selected answers
+  // 2. Fetch the student's answers
   const { data: answers } = await admin
     .from("attempt_answers")
-    .select("question_id, selected_option_id")
+    .select("question_id, selected_option_id, code_answer, test_pass_count, test_fail_count")
     .eq("attempt_id", attempt.id);
 
   // 3. Fetch exam status to determine if we should reveal the answer key
@@ -70,11 +71,13 @@ export async function GET(
         id,
         topic,
         question_type,
+        challenge_mode,
         question,
         code_snippet,
         options,
         correct_option_id,
-        explanation
+        explanation,
+        test_cases
       )
     `)
     .eq("exam_id", examId)
@@ -84,9 +87,7 @@ export async function GET(
     return NextResponse.json({ results: [] });
   }
 
-  const answersMap = new Map(
-    answers?.map((a) => [a.question_id, a.selected_option_id]) || []
-  );
+  const answersMap = new Map(answers?.map((a) => [a.question_id, a]) || []);
 
   interface ExamQuestionWithDetails {
     position: number;
@@ -95,16 +96,40 @@ export async function GET(
       id: string;
       topic: string;
       question_type: string;
+      challenge_mode: "function" | "component" | null;
       question: string;
       code_snippet: string | null;
       options: string | { id: string; text: string }[];
-      correct_option_id: string;
+      correct_option_id: string | null;
       explanation: string;
+      test_cases: unknown;
     };
   }
 
   const formattedResults = (examQuestions as unknown as ExamQuestionWithDetails[]).map((eq) => {
     const q = eq.questions;
+    const answer = answersMap.get(q.id);
+    const isProgramming = q.question_type === "programming";
+    const codeAnswer =
+      isProgramming && typeof answer?.code_answer === "string"
+        ? answer.code_answer
+        : null;
+    const testPassCount = Number(answer?.test_pass_count ?? 0);
+    const testFailCount = Number(answer?.test_fail_count ?? 0);
+    const testTotalCount = testPassCount + testFailCount;
+    const selectedOptionId =
+      !isProgramming && typeof answer?.selected_option_id === "string"
+        ? answer.selected_option_id
+        : null;
+    const isSkipped = isProgramming
+      ? !codeAnswer?.trim()
+      : !selectedOptionId;
+    const isCorrect = !isExamClosed
+      ? null
+      : isProgramming
+        ? !!codeAnswer?.trim() && testTotalCount > 0 && testFailCount === 0
+        : !!selectedOptionId && selectedOptionId === q.correct_option_id;
+
     // Critical Fix: Omit correct answer key and explanation unless exam is officially closed
     return {
       id: q.id,
@@ -112,12 +137,23 @@ export async function GET(
       points: eq.points,
       topic: q.topic,
       questionType: q.question_type,
+      challengeMode: q.challenge_mode,
       question: q.question,
       codeSnippet: q.code_snippet,
-      options: typeof q.options === "string" ? JSON.parse(q.options) : q.options,
-      correctOptionId: isExamClosed ? q.correct_option_id : null,
+      options: isProgramming
+        ? []
+        : typeof q.options === "string"
+          ? JSON.parse(q.options)
+          : q.options || [],
+      correctOptionId: !isProgramming && isExamClosed ? q.correct_option_id : null,
       explanation: isExamClosed ? q.explanation : "Answers will be visible once the instructor closes the exam.",
-      selectedOptionId: answersMap.get(q.id) || null,
+      selectedOptionId,
+      codeAnswer,
+      testPassCount,
+      testFailCount,
+      testTotalCount,
+      isSkipped,
+      isCorrect,
     };
   });
 

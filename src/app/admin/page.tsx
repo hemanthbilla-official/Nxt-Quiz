@@ -40,7 +40,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="screen-loader">
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );
