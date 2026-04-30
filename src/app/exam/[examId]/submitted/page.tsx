@@ -466,6 +466,7 @@ export default function Submitted({
       {/* ──────────────────────── DETAILED REVIEW ──────────────────────── */}
       {showReview && (
         <div className="max-w-4xl mx-auto px-4 mt-12 animate-slide-up">
+          {isPublished && (
           <div className="sticky top-6 z-40 bg-card/80 backdrop-blur-md p-2 rounded-2xl border border-border flex flex-wrap items-center justify-between gap-3 shadow-lg mb-8">
             <h2 className="px-4 text-sm font-bold text-foreground">
               Examination Review
@@ -473,10 +474,6 @@ export default function Submitted({
             <div className="flex w-full flex-wrap items-center gap-1 sm:w-auto">
               {(["All", "Correct", "Incorrect", "Skipped"] as const).map(
                 (f) => {
-                  // If results are not published, only show All and Skipped filters
-                  if (!isPublished && (f === "Correct" || f === "Incorrect"))
-                    return null;
-
                   const count = results.filter((r) => {
                     if (f === "All") return true;
                     if (!isPublished && f === "Skipped")
@@ -506,6 +503,7 @@ export default function Submitted({
               )}
             </div>
           </div>
+          )}
 
           <div className="space-y-6">
             {filteredResults.map((r) => {
