@@ -167,9 +167,10 @@ export function sanitizeRunCodeResponse(
 
 async function callRunCodeFunction(task: ProgrammingTask) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const edgeFunctionKey =
+    process.env.APP_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !edgeFunctionKey) {
     throw new Error("Code execution is not configured.");
   }
 
@@ -177,7 +178,8 @@ async function callRunCodeFunction(task: ProgrammingTask) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${supabaseServiceKey}`,
+      Authorization: `Bearer ${edgeFunctionKey}`,
+      apikey: edgeFunctionKey,
     },
     body: JSON.stringify({
       code: task.code,

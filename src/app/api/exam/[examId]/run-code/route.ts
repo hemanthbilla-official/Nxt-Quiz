@@ -138,9 +138,10 @@ export async function POST(
 
   // --- Call Supabase Edge Function ---
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const edgeFunctionKey =
+    process.env.APP_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseServiceKey) {
+  if (!supabaseUrl || !edgeFunctionKey) {
     return NextResponse.json(
       { error: "Server configuration error" },
       { status: 500 }
@@ -154,7 +155,8 @@ export async function POST(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${supabaseServiceKey}`,
+        Authorization: `Bearer ${edgeFunctionKey}`,
+        apikey: edgeFunctionKey,
       },
       body: JSON.stringify({
         code,

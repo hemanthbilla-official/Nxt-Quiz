@@ -22,6 +22,19 @@ BEGIN
     RAISE EXCEPTION 'Invalid student college ID format';
   END IF;
 
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  SELECT
+    u.id,
+    coalesce(u.email, u.id::text || '@local.invalid'),
+    u.raw_user_meta_data ->> 'full_name',
+    u.raw_user_meta_data ->> 'avatar_url'
+  FROM auth.users u
+  WHERE u.id = auth.uid()
+  ON CONFLICT (id) DO UPDATE
+  SET email = EXCLUDED.email,
+      full_name = coalesce(EXCLUDED.full_name, public.profiles.full_name),
+      avatar_url = coalesce(EXCLUDED.avatar_url, public.profiles.avatar_url);
+
   UPDATE public.profiles
   SET student_college_id = v_student_college_id,
       onboarded_at = coalesce(onboarded_at, now())

@@ -52,7 +52,12 @@ const blockedGlobalNames = [
   "Function",
   "eval",
 ];
-const blockedGlobalValues = blockedGlobalNames.map(() => undefined);
+const strictModeBlockedGlobalNames = blockedGlobalNames.filter(
+  (name) => name !== "eval",
+);
+const strictModeBlockedGlobalValues = strictModeBlockedGlobalNames.map(
+  () => undefined,
+);
 
 async function loadReactDeps() {
   if (React && renderToString && babelTransform) return;
@@ -130,22 +135,26 @@ function getCorsHeaders(req: Request) {
 
 function isAuthorized(req: Request) {
   const authHeader = req.headers.get("authorization");
-  if (!authHeader) return false;
+  const bearerToken = authHeader?.replace(/^Bearer\s+/i, "");
+  const requestTokens = [
+    bearerToken,
+    req.headers.get("apikey"),
+    req.headers.get("x-app-service-key"),
+  ].filter((token): token is string => !!token);
 
-  // Accept the auto-injected SUPABASE_SERVICE_ROLE_KEY (JWT format)
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (serviceKey && authHeader === `Bearer ${serviceKey}`) return true;
+  if (requestTokens.length === 0) return false;
 
-  // Also accept a custom key for local dev where formats may differ
-  const appKey = Deno.env.get("APP_SERVICE_KEY");
-  if (appKey && authHeader === `Bearer ${appKey}`) return true;
+  // Local Supabase exposes both JWT-style service keys and sb_secret_* keys.
+  // Hosted projects may expose only one of these names depending on key setup.
+  const acceptedKeys = [
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+    Deno.env.get("SERVICE_ROLE_KEY"),
+    Deno.env.get("SUPABASE_SECRET_KEY"),
+    Deno.env.get("SECRET_KEY"),
+    Deno.env.get("APP_SERVICE_KEY"),
+  ].filter((key): key is string => !!key);
 
-  // Also check: the sent token might be a valid service_role JWT even if
-  // the env var uses the new sb_secret_ format, or vice versa.
-  // Accept any bearer token that matches ANY of the known service keys.
-  const token = authHeader.replace(/^Bearer\s+/i, "");
-  if (serviceKey && token === serviceKey) return true;
-  if (appKey && token === appKey) return true;
+  if (requestTokens.some((token) => acceptedKeys.includes(token))) return true;
 
   return false;
 }
@@ -192,14 +201,18 @@ function getExportedFunction(
   functionName: string,
   runtimeBindings: Record<string, unknown> = {},
 ) {
+  if (/\beval\s*\(/.test(code)) {
+    throw new Error("Use of eval is not allowed");
+  }
+
   const runtimeNames = Object.keys(runtimeBindings);
   const runtimeValues = Object.values(runtimeBindings);
   const factory = new Function(
-    ...blockedGlobalNames,
+    ...strictModeBlockedGlobalNames,
     ...runtimeNames,
     `"use strict";\n${code}\nreturn typeof ${functionName} !== "undefined" ? ${functionName} : typeof __defaultExport !== "undefined" ? __defaultExport : undefined;`,
   );
-  return factory(...blockedGlobalValues, ...runtimeValues) as unknown;
+  return factory(...strictModeBlockedGlobalValues, ...runtimeValues) as unknown;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
