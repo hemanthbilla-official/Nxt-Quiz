@@ -119,7 +119,8 @@ export default function QuestionBank() {
   // Build a content fingerprint for deduplication (ignores DB id)
   const getQuestionFingerprint = (q: Question): string => {
     const questionText = q.question.trim().toLowerCase();
-    const optionTexts = (q.options || [])
+    const opts: Option[] = typeof q.options === "string" ? JSON.parse(q.options) : (q.options || []);
+    const optionTexts = opts
       .map((o) => o.text.trim().toLowerCase())
       .sort()
       .join("|");
