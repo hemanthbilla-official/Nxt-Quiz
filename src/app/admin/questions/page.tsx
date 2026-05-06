@@ -116,17 +116,28 @@ export default function QuestionBank() {
     URL.revokeObjectURL(url);
   };
 
+  // Build a content fingerprint for deduplication (ignores DB id)
+  const getQuestionFingerprint = (q: Question): string => {
+    const questionText = q.question.trim().toLowerCase();
+    const optionTexts = (q.options || [])
+      .map((o) => o.text.trim().toLowerCase())
+      .sort()
+      .join("|");
+    return `${questionText}::${optionTexts}`;
+  };
+
   const handleDownloadQuestions = (grouped: Record<string, Question[]>) => {
     const checkedKeys = Object.keys(selectedSections).filter((k) => selectedSections[k]);
     const sectionsToExport = checkedKeys.length > 0 ? checkedKeys : Object.keys(grouped);
 
-    // Deduplicate by question id
+    // Deduplicate by question content (text + options), not by DB id
     const seen = new Set<string>();
     const deduped: Question[] = [];
     sectionsToExport.forEach((section) => {
       (grouped[section] || []).forEach((q) => {
-        if (!seen.has(q.id)) {
-          seen.add(q.id);
+        const fingerprint = getQuestionFingerprint(q);
+        if (!seen.has(fingerprint)) {
+          seen.add(fingerprint);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { exam_questions, ...clean } = q;
           deduped.push(clean as Question);
@@ -433,7 +444,7 @@ export default function QuestionBank() {
                   ([examName]) => examName === selectedExamName,
                 )
             ).map(([examName, qs]) => {
-              const isOpen = openSections[examName] ?? true;
+              const isOpen = openSections[examName] ?? false;
               const isChecked = !!selectedSections[examName];
               return (
               <div
