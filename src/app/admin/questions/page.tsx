@@ -33,6 +33,11 @@ export default function QuestionBank() {
   const [submitting, setSubmitting] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
+  // Accordion: track which sections are open
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  // Checkbox: track which sections are selected for download
+  const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>({});
+
   const [form, setForm] = useState<Partial<Question>>({
     topic: "React",
     difficulty: "Basic",
@@ -82,6 +87,57 @@ export default function QuestionBank() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const toggleSection = (sectionName: string) => {
+    setOpenSections((prev) => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  };
+
+  const toggleSectionCheckbox = (sectionName: string) => {
+    setSelectedSections((prev) => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  };
+
+  const toggleAllSections = (allSections: string[]) => {
+    const allSelected = allSections.every((s) => selectedSections[s]);
+    const next: Record<string, boolean> = {};
+    allSections.forEach((s) => (next[s] = !allSelected));
+    setSelectedSections(next);
+  };
+
+  const downloadFile = (data: object, filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadQuestions = (grouped: Record<string, Question[]>) => {
+    const checkedKeys = Object.keys(selectedSections).filter((k) => selectedSections[k]);
+    const sectionsToExport = checkedKeys.length > 0 ? checkedKeys : Object.keys(grouped);
+
+    // Deduplicate by question id
+    const seen = new Set<string>();
+    const deduped: Question[] = [];
+    sectionsToExport.forEach((section) => {
+      (grouped[section] || []).forEach((q) => {
+        if (!seen.has(q.id)) {
+          seen.add(q.id);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { exam_questions, ...clean } = q;
+          deduped.push(clean as Question);
+        }
+      });
+    });
+
+    const filename = checkedKeys.length > 0
+      ? `questions_selected_${checkedKeys.length}_sections.json`
+      : "questions_all.json";
+    downloadFile(deduped, filename);
   };
 
   const fetchQuestions = useCallback(async () => {
@@ -283,6 +339,18 @@ export default function QuestionBank() {
             </button>
           )}
           <button
+            onClick={() => handleDownloadQuestions(groupedQuestions)}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-accent/10 text-accent border border-accent/20 hover:bg-accent/20 transition-all flex items-center gap-2 shadow-sm"
+            title={Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0 ? "Download selected sections" : "Download all questions"}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0
+              ? `Export ${Object.keys(selectedSections).filter((k) => selectedSections[k]).length} Section(s)`
+              : "Export All JSON"}
+          </button>
+          <button
             onClick={handleDownloadTemplate}
             className="px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 shadow-sm"
           >
@@ -338,24 +406,68 @@ export default function QuestionBank() {
           </div>
         ) : (
           <>
+            {/* Select / Deselect All toggle */}
+            {(() => {
+              const visibleEntries = selectedExamName === "All"
+                ? Object.keys(groupedQuestions)
+                : Object.keys(groupedQuestions).filter((n) => n === selectedExamName);
+              if (visibleEntries.length <= 1) return null;
+              const allChecked = visibleEntries.every((s) => selectedSections[s]);
+              return (
+                <div className="flex items-center gap-3 mb-2">
+                  <button
+                    onClick={() => toggleAllSections(visibleEntries)}
+                    className="text-xs font-semibold text-primary hover:underline transition-all"
+                  >
+                    {allChecked ? "Deselect All" : "Select All Sections"}
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {Object.keys(selectedSections).filter((k) => selectedSections[k]).length} selected
+                  </span>
+                </div>
+              );
+            })()}
             {(selectedExamName === "All"
               ? Object.entries(groupedQuestions)
               : Object.entries(groupedQuestions).filter(
                   ([examName]) => examName === selectedExamName,
                 )
-            ).map(([examName, qs]) => (
+            ).map(([examName, qs]) => {
+              const isOpen = openSections[examName] ?? true;
+              const isChecked = !!selectedSections[examName];
+              return (
               <div
                 key={examName}
                 className="glass-card overflow-hidden animate-fade-in shadow-sm border border-border"
               >
-                <div className="bg-card-hover px-4 sm:px-6 py-4 border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-sm font-bold text-foreground break-words">
+                <div
+                  className="bg-card-hover px-4 sm:px-6 py-4 border-b border-border flex items-center gap-3 cursor-pointer select-none group"
+                  onClick={() => toggleSection(examName)}
+                >
+                  {/* Checkbox — stop propagation so clicking it doesn't toggle accordion */}
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => { e.stopPropagation(); toggleSectionCheckbox(examName); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary shrink-0 cursor-pointer accent-[var(--primary)]"
+                    title="Select for download"
+                  />
+                  {/* Chevron */}
+                  <svg
+                    className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                  <h2 className="text-sm font-bold text-foreground break-words flex-1">
                     {examName}
                   </h2>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
                     {qs.length} Question{qs.length !== 1 ? "s" : ""}
                   </span>
                 </div>
+                {isOpen && (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[680px] text-sm text-left">
                     <thead className="bg-card/30">
@@ -447,8 +559,10 @@ export default function QuestionBank() {
                     </tbody>
                   </table>
                 </div>
+                )}
               </div>
-            ))}
+              );
+            })}
 
             {Object.keys(groupedQuestions).length === 0 &&
               selectedExamName !== "" && (
