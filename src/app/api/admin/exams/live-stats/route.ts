@@ -9,13 +9,17 @@ export async function GET() {
   }
 
   const supabase = createAdminClient();
+  const MAX_EXAMS = 20;
+  const THIRTY_MINS_AGO = new Date(Date.now() - 30 * 60 * 1000).toISOString();
 
-  // Get all exams that are live or waiting
+  // Get all exams that are live or waiting, limited and filtered by recent activity
   const { data: exams, error: examsError } = await supabase
     .from("exams")
     .select("id, exam_code, title, status, capacity, duration_seconds, starts_at")
     .in("status", ["waiting", "in_progress"])
-    .order("created_at", { ascending: false });
+    .or(`created_at.gte.${THIRTY_MINS_AGO},updated_at.gte.${THIRTY_MINS_AGO}`)
+    .order("updated_at", { ascending: false })
+    .limit(MAX_EXAMS);
 
   if (examsError) {
     return NextResponse.json({ error: examsError.message }, { status: 500 });

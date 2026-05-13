@@ -49,7 +49,10 @@ export async function POST(request: Request) {
     // 4. Delete all exam participants
     await supabase.from("exam_participants").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
-    // 5. Delete all exams
+    // 5. BUG-G FIX: Delete all exam events (before exams due to FK)
+    await supabase.from("exam_events").delete().neq("id", 0);
+
+    // 6. Delete all exams
     await supabase.from("exams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
     // 6. Delete all questions from global bank

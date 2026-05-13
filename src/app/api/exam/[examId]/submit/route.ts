@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 export async function POST(
   request: Request,
@@ -14,12 +15,7 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
-  
-  if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -27,6 +23,17 @@ export async function POST(
 
   // Use admin client for scoring
   const admin = createAdminClient();
+
+  // Check exam is still active
+  const { data: exam } = await admin
+    .from("exams")
+    .select("status")
+    .eq("id", examId)
+    .single();
+
+  if (exam?.status !== "in_progress") {
+    return NextResponse.json({ error: "Exam is not active" }, { status: 400 });
+  }
 
   // SEC-06: Add exam_id cross-check to prevent cross-exam submission
   const { data: attempt } = await admin

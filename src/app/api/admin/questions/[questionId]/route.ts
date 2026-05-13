@@ -44,6 +44,20 @@ export async function PATCH(
 
   const supabase = createAdminClient();
 
+  // BUG-B FIX: Block editing questions linked to any non-draft exam
+  const { data: activeLinks } = await supabase
+    .from("exam_questions")
+    .select("exam_id, exams!inner(status)")
+    .eq("question_id", questionId)
+    .in("exams.status", ["waiting", "in_progress", "closed"]);
+
+  if (activeLinks && activeLinks.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot edit a question that belongs to a waiting, active, or closed exam" },
+      { status: 400 }
+    );
+  }
+
   const updates: {
     topic?: string;
     difficulty?: string;
@@ -92,8 +106,20 @@ export async function DELETE(
 
   const supabase = createAdminClient();
 
-  // Note: This might fail if the question is used in an exam (foreign key constraint)
-  // We should handle that or delete from exam_questions first.
+  // BUG-C FIX: Block deleting questions linked to any non-draft exam
+  const { data: examLinks } = await supabase
+    .from("exam_questions")
+    .select("exam_id, exams!inner(status)")
+    .eq("question_id", questionId)
+    .in("exams.status", ["waiting", "in_progress", "closed"]);
+
+  if (examLinks && examLinks.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot delete a question used by a waiting, active, or closed exam" },
+      { status: 400 }
+    );
+  }
+
   await supabase.from("exam_questions").delete().eq("question_id", questionId);
   await supabase.from("attempt_answers").delete().eq("question_id", questionId);
 

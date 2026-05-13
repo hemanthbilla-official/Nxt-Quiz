@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 export async function POST(
   request: Request,
@@ -14,10 +15,7 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   // BUG-01: Fix operator precedence
-  let userId = user?.id;
-  if (!userId && (process.env.ENVIRONMENT === "local")) {
-    userId = "00000000-0000-0000-0000-000000000001";
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -43,28 +41,34 @@ export async function POST(
   }
 
   // 2. Increment tab_switch_count using atomic RPC
-  const { data, error } = await admin.rpc("increment_tab_switch", {
+  const { data, error: rpcError } = await admin.rpc("increment_tab_switch", {
     p_attempt_id: attempt.id,
   });
 
-  // BUG-04: Fallback if RPC is not yet applied to DB.
+  // Fallback if RPC is not yet applied to DB.
   // Note: This fallback has a small race window under rapid concurrent tab switches.
   // The primary RPC path above is atomic and preferred.
-  if (error) {
-    const { data: currentAttempt } = await admin
-      .from("attempts")
-      .select("tab_switch_count")
-      .eq("id", attempt.id)
-      .single();
+  if (rpcError) {
+    console.warn("RPC increment_tab_switch failed, using fallback:", rpcError.message);
+    try {
+      const { data: currentAttempt } = await admin
+        .from("attempts")
+        .select("tab_switch_count")
+        .eq("id", attempt.id)
+        .single();
 
-    const newCount = (currentAttempt?.tab_switch_count || 0) + 1;
+      const newCount = (currentAttempt?.tab_switch_count || 0) + 1;
 
-    await admin
-      .from("attempts")
-      .update({ tab_switch_count: newCount })
-      .eq("id", attempt.id);
+      await admin
+        .from("attempts")
+        .update({ tab_switch_count: newCount })
+        .eq("id", attempt.id);
 
-    return NextResponse.json({ success: true, count: newCount });
+      return NextResponse.json({ success: true, count: newCount, fallback: true });
+    } catch (fallbackErr) {
+      console.error("Fallback increment failed:", fallbackErr instanceof Error ? fallbackErr.message : "Unknown");
+      return NextResponse.json({ success: true, count: 0, error: "Proctoring log failed" });
+    }
   }
 
   return NextResponse.json({ success: true, count: data });

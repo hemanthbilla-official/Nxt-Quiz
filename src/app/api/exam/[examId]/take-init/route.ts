@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isLocalEnvironment, resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 export async function GET(
   request: Request,
@@ -13,12 +14,8 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
-  
-  if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
-  }
+  const isLocal = isLocalEnvironment();
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -34,7 +31,7 @@ export async function GET(
     .eq("user_id", userId)
     .single();
 
-  if (!participant && userId !== "00000000-0000-0000-0000-000000000001") {
+  if (!participant) {
     // Check if user is admin
     const { data: profile } = await admin
       .from("profiles")
@@ -91,11 +88,16 @@ export async function GET(
     .select("question_id, selected_option_id, is_bookmarked, is_skipped")
     .eq("attempt_id", attempt.id);
 
-  // Get server time
-  const { data: serverTimeData } = await admin.rpc("get_server_time");
-  const serverNow = serverTimeData
-    ? new Date(serverTimeData).getTime()
-    : Date.now();
+  // Get server time with fallback
+  let serverNow = Date.now();
+  try {
+    const { data: serverTimeData, error: rpcError } = await admin.rpc("get_server_time");
+    if (!rpcError && serverTimeData) {
+      serverNow = new Date(serverTimeData).getTime();
+    }
+  } catch (err) {
+    console.error("Failed to get server time:", err instanceof Error ? err.message : "Unknown");
+  }
 
   return NextResponse.json({
     attempt,

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 // SEC-03: Require authentication before exposing exam metadata
 export async function GET(
@@ -15,12 +16,7 @@ export async function GET(
   } = await supabase.auth.getUser();
 
   // BUG-01: Fix operator precedence
-  let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
-  
-  if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });

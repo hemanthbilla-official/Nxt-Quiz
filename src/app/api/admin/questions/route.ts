@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { nanoid } from "nanoid";
 
 // GET — list all questions from the bank (STD-09: with optional pagination)
 export async function GET(_request: Request) {
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("questions")
     .insert({
+      id: `q-${nanoid(10)}`,
       topic: sanitize(topic.trim()),
       difficulty: difficulty || "Basic",
       question_type: question_type || "theory",
@@ -132,6 +134,20 @@ export async function DELETE(request: Request) {
   }
 
   const supabase = createAdminClient();
+
+  // BUG-H FIX: Block bulk delete if any exam is in_progress
+  const { data: activeExams } = await supabase
+    .from("exams")
+    .select("id")
+    .eq("status", "in_progress")
+    .limit(1);
+
+  if (activeExams && activeExams.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot wipe questions while exams are in progress. End all active exams first." },
+      { status: 400 }
+    );
+  }
 
   // Wipe all related data first
   await supabase.from("exam_questions").delete().neq("question_id", "sentinel");

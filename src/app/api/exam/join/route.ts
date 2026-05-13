@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getLocalUserIdFromCookie, isLocalEnvironment } from "@/lib/local-user";
 
 export async function POST(request: Request) {
   const { examCode } = await request.json();
@@ -9,44 +10,51 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Exam code is required" }, { status: 400 });
   }
 
+  const trimmed = examCode.trim().toUpperCase();
+  if (trimmed.length < 3 || trimmed.length > 20) {
+    return NextResponse.json({ error: "Invalid exam code length" }, { status: 400 });
+  }
+
+  if (!/^[A-Z0-9]+$/.test(trimmed)) {
+    return NextResponse.json({ error: "Exam code must be alphanumeric" }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // BUG-01: Fix operator precedence with parentheses
-  let userId = user?.id;
-  const isLocal = process.env.ENVIRONMENT === "local" || process.env.NEXT_PUBLIC_ENVIRONMENT === "local";
+  let userId: string | null = user?.id ?? null;
+  const isLocal = isLocalEnvironment();
   
   if (!userId && isLocal) {
-    userId = "00000000-0000-0000-0000-000000000001";
+    userId = await getLocalUserIdFromCookie();
   }
 
   if (!userId) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  // Check profile onboarding (skip for local bypass dummy ID which is upserted in onboarding page)
-  if (userId !== "00000000-0000-0000-0000-000000000001") {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("student_college_id, onboarded_at")
-      .eq("id", userId)
-      .single();
+  const profileClient = isLocal ? createAdminClient() : supabase;
+  const { data: profile } = await profileClient
+    .from("profiles")
+    .select("student_college_id, onboarded_at")
+    .eq("id", userId)
+    .single();
 
-    if (!profile?.student_college_id) {
-      return NextResponse.json(
-        { error: "Please complete onboarding first" },
-        { status: 400 }
-      );
-    }
+  if (!profile?.student_college_id) {
+    return NextResponse.json(
+      { error: "Please complete onboarding first" },
+      { status: 400 }
+    );
   }
 
   // Use admin client to execute atomic join RPC
   const admin = createAdminClient();
 
   const { data: examId, error } = await admin.rpc("join_exam", {
-    p_exam_code: examCode.trim().toUpperCase(),
+    p_exam_code: trimmed,
     p_user_id: userId,
   });
 

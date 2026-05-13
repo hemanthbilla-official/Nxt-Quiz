@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
+import { nanoid } from "nanoid";
 
 // POST — bulk import questions
 export async function POST(request: Request) {
@@ -15,6 +16,24 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient();
+
+  // FIX: Guard against importing questions for an active or closed exam.
+  // Once an exam has started, its questions must not be modified — doing so
+  // would corrupt scores and submitted results for students.
+  if (examId) {
+    const { data: exam } = await supabase
+      .from("exams")
+      .select("status")
+      .eq("id", examId)
+      .single();
+
+    if (exam && exam.status !== "waiting" && exam.status !== "draft") {
+      return NextResponse.json(
+        { error: "Cannot modify questions for an active or closed exam" },
+        { status: 400 }
+      );
+    }
+  }
 
   interface ImportQuestion {
     id?: string;
@@ -31,8 +50,16 @@ export async function POST(request: Request) {
     points?: number;
   }
 
-  const formatted = questions.map((q: ImportQuestion) => ({
-    id: q.id || `q-${Math.random().toString(36).substr(2, 9)}`,
+  // FIX: Generate a unique prefix per import batch so that question IDs never
+  // collide across different exams. Previously, user-supplied IDs (e.g. "q-1")
+  // could clash between two JSON files, causing upsert to silently overwrite
+  // another exam's questions. Now each import gets its own namespace.
+  const batchPrefix = examId
+    ? examId.slice(0, 8)
+    : nanoid(8);
+
+  const formatted = questions.map((q: ImportQuestion, i: number) => ({
+    id: `${batchPrefix}-${q.id || `q${i + 1}`}`,
     topic: q.topic || "Unknown",
     difficulty: q.difficulty || "Basic",
     question_type: q.questionType || "theory",
@@ -44,9 +71,12 @@ export async function POST(request: Request) {
     tags: q.tags || [],
   }));
 
+  // FIX: Use INSERT instead of UPSERT. With unique exam-scoped IDs there
+  // should be no conflicts. If there is a collision, it will fail safely
+  // instead of silently overwriting another exam's question data.
   const { data: insertedQuestions, error } = await supabase
     .from("questions")
-    .upsert(formatted, { onConflict: "id" })
+    .insert(formatted)
     .select();
 
   if (error) {

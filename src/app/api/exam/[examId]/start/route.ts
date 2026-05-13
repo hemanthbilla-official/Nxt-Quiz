@@ -40,6 +40,19 @@ export async function POST(
     );
   }
 
+  // BUG-F FIX: Validate exam has questions before starting
+  const { count: questionCount } = await supabase
+    .from("exam_questions")
+    .select("*", { count: "exact", head: true })
+    .eq("exam_id", examId);
+
+  if (!questionCount || questionCount === 0) {
+    return NextResponse.json(
+      { error: "Cannot start an exam with no questions. Please add questions first." },
+      { status: 400 },
+    );
+  }
+
   const now = new Date();
   const closesAt = new Date(now.getTime() + exam.duration_seconds * 1000);
 
@@ -71,7 +84,7 @@ export async function POST(
       .select("points")
       .eq("exam_id", examId);
 
-    const maxScore = examQuestions?.reduce((sum, q) => sum + q.points, 0) || 50;
+    const maxScore = examQuestions?.reduce((sum, q) => sum + q.points, 0) || 0;
 
     // Create attempts
     const attempts = participants.map((p) => ({
