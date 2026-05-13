@@ -32,6 +32,7 @@ export default function QuestionBank() {
 
   const [submitting, setSubmitting] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [isDeletingSections, setIsDeletingSections] = useState(false);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>({});
@@ -274,9 +275,46 @@ export default function QuestionBank() {
 
   const availableExams = Object.keys(groupedQuestions).sort();
 
+  const handleDeleteSelectedSections = async () => {
+    const checkedKeys = Object.keys(selectedSections).filter((k) => selectedSections[k]);
+    if (checkedKeys.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete all questions in the ${checkedKeys.length} selected section(s)? This action cannot be undone.`)) return;
+
+    const questionsToDelete: string[] = [];
+    checkedKeys.forEach((section) => {
+      (groupedQuestions[section] || []).forEach((q) => {
+        questionsToDelete.push(q.id);
+      });
+    });
+
+    if (questionsToDelete.length === 0) return;
+
+    setIsDeletingSections(true);
+    try {
+      const res = await fetch("/api/admin/questions/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionIds: questionsToDelete }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to delete questions");
+      } else {
+        setSelectedSections({});
+        await fetchQuestions();
+      }
+    } catch (e) {
+      alert("An error occurred while deleting.");
+    } finally {
+      setIsDeletingSections(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full p-12">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="spinner" style={{ width: 40, height: 40 }} />
       </div>
     );
@@ -332,6 +370,30 @@ export default function QuestionBank() {
             {Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0
               ? `Export ${Object.keys(selectedSections).filter((k) => selectedSections[k]).length} Section(s)`
               : "Export JSON"}
+          </button>
+          <button
+            onClick={handleDeleteSelectedSections}
+            disabled={Object.keys(selectedSections).filter((k) => selectedSections[k]).length === 0 || isDeletingSections}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 shadow-sm ${
+              Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0 && !isDeletingSections
+                ? "bg-danger text-white border-danger hover:bg-danger-hover"
+                : "bg-card text-muted-foreground border-border opacity-50 cursor-not-allowed"
+            }`}
+            title="Delete selected sections"
+          >
+            {isDeletingSections ? (
+               <>
+                 <div className="spinner" style={{ width: 14, height: 14, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} />
+                 Deleting...
+               </>
+            ) : (
+               <>
+                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                 </svg>
+                 Delete Selected
+               </>
+            )}
           </button>
           <button
             onClick={handleDownloadTemplate}

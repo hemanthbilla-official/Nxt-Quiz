@@ -25,6 +25,7 @@ export default function StudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "onboarded" | "pending">("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
@@ -123,9 +124,14 @@ export default function StudentsPage() {
         (s.email || "").toLowerCase().includes(q) ||
         (s.student_college_id || "").toLowerCase().includes(q);
 
-      return matchesSearch;
+      if (!matchesSearch) return false;
+
+      if (statusFilter === "onboarded") return !!s.onboarded_at;
+      if (statusFilter === "pending") return !s.onboarded_at;
+
+      return true;
     });
-  }, [students, search]);
+  }, [students, search, statusFilter]);
 
   if (loading) {
     return (
@@ -143,6 +149,15 @@ export default function StudentsPage() {
           <p className="text-sm text-muted-foreground mt-1">{students.length} registered students</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "all" | "onboarded" | "pending")}
+            className="px-4 py-2.5 rounded-xl bg-background border border-border text-sm focus:outline-none focus:border-primary transition-all shadow-sm"
+          >
+            <option value="all">All Statuses</option>
+            <option value="onboarded">Onboarded</option>
+            <option value="pending">Pending</option>
+          </select>
           <div className="relative w-full sm:w-auto">
             <svg className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input
