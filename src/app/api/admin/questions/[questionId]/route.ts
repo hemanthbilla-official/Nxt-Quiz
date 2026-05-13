@@ -6,7 +6,6 @@ import { assertSameOriginRequest } from "@/lib/request-security";
 const sanitize = (value: string) =>
   value.replace(/[<>]/g, (char) => (char === "<" ? "&lt;" : "&gt;"));
 
-// GET — get a single question
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ questionId: string }> }
@@ -32,7 +31,6 @@ export async function GET(
   return NextResponse.json({ question });
 }
 
-// PATCH — update a question
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ questionId: string }> }
@@ -50,11 +48,23 @@ export async function PATCH(
   const {
     topic, difficulty, question_type, question, code_snippet,
     options, correct_option_id, explanation, tags,
-    // Programming fields
     starter_code, function_name, challenge_mode, test_cases, language, points,
   } = body;
 
   const supabase = createAdminClient();
+
+  const { data: activeLinks } = await supabase
+    .from("exam_questions")
+    .select("exam_id, exams!inner(status)")
+    .eq("question_id", questionId)
+    .in("exams.status", ["waiting", "in_progress", "closed"]);
+
+  if (activeLinks && activeLinks.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot edit a question that belongs to a waiting, active, or closed exam" },
+      { status: 400 }
+    );
+  }
 
   const updates: Record<string, unknown> = {};
   if (topic && typeof topic === "string") updates.topic = sanitize(topic.trim());
@@ -71,7 +81,6 @@ export async function PATCH(
   }
   if (tags) updates.tags = tags;
   if (points !== undefined) updates.points = points;
-  // Programming fields
   if (starter_code !== undefined) updates.starter_code = starter_code;
   if (function_name !== undefined) updates.function_name = function_name;
   if (challenge_mode !== undefined) updates.challenge_mode = challenge_mode;
@@ -108,8 +117,20 @@ export async function DELETE(
 
   const supabase = createAdminClient();
 
-  // Note: This might fail if the question is used in an exam (foreign key constraint)
-  // We should handle that or delete from exam_questions first.
+  // BUG-C FIX: Block deleting questions linked to any non-draft exam
+  const { data: examLinks } = await supabase
+    .from("exam_questions")
+    .select("exam_id, exams!inner(status)")
+    .eq("question_id", questionId)
+    .in("exams.status", ["waiting", "in_progress", "closed"]);
+
+  if (examLinks && examLinks.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot delete a question used by a waiting, active, or closed exam" },
+      { status: 400 }
+    );
+  }
+
   await supabase.from("exam_questions").delete().eq("question_id", questionId);
   await supabase.from("attempt_answers").delete().eq("question_id", questionId);
 

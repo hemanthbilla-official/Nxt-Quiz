@@ -5,7 +5,6 @@ import { nanoid } from "nanoid";
 import { assertSameOriginRequest } from "@/lib/request-security";
 import { normalizeEditorFiles, serializeCodeFiles } from "@/lib/code-answer";
 
-// GET — list all questions from the bank (STD-09: with optional pagination)
 export async function GET(_request: Request) {
   const admin = await getAdminUser();
   if (!admin) {
@@ -45,7 +44,6 @@ export async function GET(_request: Request) {
   return NextResponse.json({ questions: questions || [], total: count || 0, page, pageSize });
 }
 
-// POST — create a new question
 export async function POST(request: Request) {
   const originError = assertSameOriginRequest(request);
   if (originError) return originError;
@@ -66,7 +64,6 @@ export async function POST(request: Request) {
     correct_option_id,
     explanation,
     tags,
-    // Programming question fields
     starter_code,
     starter_files,
     function_name,
@@ -86,7 +83,6 @@ export async function POST(request: Request) {
       ? function_name || "App"
       : function_name;
 
-  // Request Validation — programming questions don't need options/correct_option_id
   if (!topic || typeof topic !== "string" || !question || typeof question !== "string") {
     return NextResponse.json(
       { error: "Topic and question are required." },
@@ -115,7 +111,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // STD-11: Basic input sanitization (defense-in-depth)
   const sanitize = (s: string) =>
     s.replace(/[<>]/g, (c) => (c === "<" ? "&lt;" : "&gt;"));
 
@@ -140,7 +135,6 @@ export async function POST(request: Request) {
     insertData.challenge_mode = normalizedChallengeMode;
     insertData.test_cases = test_cases;
     insertData.language = language || "javascript";
-    // Programming questions don't need MCQ fields
     insertData.options = null;
     insertData.correct_option_id = null;
     insertData.explanation = null;
@@ -192,6 +186,20 @@ export async function DELETE(request: Request) {
   }
 
   const supabase = createAdminClient();
+
+  // BUG-H FIX: Block bulk delete if any exam is in_progress
+  const { data: activeExams } = await supabase
+    .from("exams")
+    .select("id")
+    .eq("status", "in_progress")
+    .limit(1);
+
+  if (activeExams && activeExams.length > 0) {
+    return NextResponse.json(
+      { error: "Cannot wipe questions while exams are in progress. End all active exams first." },
+      { status: 400 }
+    );
+  }
 
   // Wipe all related data first
   await supabase.from("exam_questions").delete().neq("question_id", "sentinel");

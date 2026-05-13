@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import {
+  LOCAL_STUDENT_EMAIL,
+  LOCAL_STUDENT_ID,
+  assertLocalSupabase,
+  findOrCreateLocalAuthUser,
+  setLocalUserCookie,
+} from "@/lib/local-user";
 import { assertSameOriginRequest } from "@/lib/request-security";
 import { isValidStudentId, normalizeStudentId } from "@/lib/student-id";
 
@@ -9,10 +15,14 @@ export async function POST(request: Request) {
   if (originError) return originError;
 
   const { studentCollegeId, fullName } = await request.json();
-  const isLocal = isSafeLocalBypassEnabled();
 
-  if (!isLocal) {
-    return NextResponse.json({ error: "Only allowed in local dev" }, { status: 403 });
+  try {
+    assertLocalSupabase();
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Local Supabase required" },
+      { status: 403 },
+    );
   }
 
   const normalizedStudentId = normalizeStudentId(String(studentCollegeId ?? ""));
@@ -21,14 +31,14 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const localUser = await findOrCreateLocalAuthUser(admin, fullName || "Local Student");
 
-  // Upsert the dummy profile with all required fields
   const { error } = await admin.from("profiles").upsert({
-    id: LOCAL_STUDENT_ID,
+    id: localUser.id,
     student_college_id: normalizedStudentId,
     full_name: typeof fullName === "string" && fullName.trim() ? fullName.trim() : "Local Student",
     onboarded_at: new Date().toISOString(),
-    email: "local@student.com", // Required field
+    email: localUser.email || LOCAL_STUDENT_EMAIL,
     role: "student",
     updated_at: new Date().toISOString()
   });
@@ -37,5 +47,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true });
+  await setLocalUserCookie(localUser.id);
+
+  return NextResponse.json({ success: true, userId: localUser.id });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 import { scoreAttempt, SUBMISSION_GRACE_MS } from "@/lib/exam-scoring";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
@@ -24,18 +24,24 @@ export async function POST(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = isSafeLocalBypassEnabled();
-
-  if (!userId && isLocal) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
   }
 
   const admin = createAdminClient();
+
+  const { data: exam } = await admin
+    .from("exams")
+    .select("status")
+    .eq("id", examId)
+    .single();
+
+  if (exam?.status !== "in_progress") {
+    return NextResponse.json({ error: "Exam is not active" }, { status: 400 });
+  }
+
   const { data: attempt } = await admin
     .from("attempts")
     .select("id, status, server_due_at")
@@ -84,5 +90,5 @@ export async function POST(
     .eq("exam_id", examId)
     .eq("user_id", userId);
 
-  return NextResponse.json({ score: totalScore, maxScore });
+return NextResponse.json({ score: totalScore, maxScore });
 }

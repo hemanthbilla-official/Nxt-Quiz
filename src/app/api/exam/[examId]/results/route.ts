@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 export async function GET(
   request: Request,
@@ -13,21 +13,14 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = isSafeLocalBypassEnabled();
-  
-  if (!userId && isLocal) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
   }
 
-  // Use admin client securely to bypass RLS for detailed questions table
   const admin = createAdminClient();
 
-  // 1. Get the attempt and verify it's valid and submitted
   const { data: attempt } = await admin
     .from("attempts")
     .select("id, status")
@@ -46,13 +39,11 @@ export async function GET(
     );
   }
 
-  // 2. Fetch the student's answers
   const { data: answers } = await admin
     .from("attempt_answers")
     .select("question_id, selected_option_id, code_answer, test_pass_count, test_fail_count")
     .eq("attempt_id", attempt.id);
 
-  // 3. Fetch exam status to determine if we should reveal the answer key
   const { data: exam } = await admin
     .from("exams")
     .select("status")
@@ -61,7 +52,6 @@ export async function GET(
 
   const isExamClosed = exam?.status === "closed";
 
-  // 4. Fetch the full questions mapping
   const { data: examQuestions } = await admin
     .from("exam_questions")
     .select(`
@@ -130,7 +120,6 @@ export async function GET(
         ? !!codeAnswer?.trim() && testTotalCount > 0 && testFailCount === 0
         : !!selectedOptionId && selectedOptionId === q.correct_option_id;
 
-    // Critical Fix: Omit correct answer key and explanation unless exam is officially closed
     return {
       id: q.id,
       position: eq.position,

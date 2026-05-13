@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
-// SEC-03: Require authentication before exposing exam metadata
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ examId: string }> }
@@ -15,13 +14,7 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  // BUG-01: Fix operator precedence
-  let userId = user?.id;
-  const isLocal = isSafeLocalBypassEnabled();
-  
-  if (!userId && isLocal) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -29,7 +22,6 @@ export async function GET(
 
   const admin = createAdminClient();
 
-  // SEC-03: Verify user is a participant of this exam (or an admin)
   const { data: participant } = await admin
     .from("exam_participants")
     .select("id")
@@ -38,7 +30,6 @@ export async function GET(
     .single();
 
   if (!participant) {
-    // Allow admins through as well
     const { data: profile } = await admin
       .from("profiles")
       .select("role")
@@ -60,7 +51,6 @@ export async function GET(
     return NextResponse.json({ error: "Exam not found" }, { status: 404 });
   }
 
-  // Get user's attempt if it exists
   const { data: attempt } = await admin
     .from("attempts")
     .select("id, server_due_at, status")

@@ -22,32 +22,56 @@ interface Exam {
 export default function LiveMonitor() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  
-  const fetchExams = useCallback(async () => {
+
+  const fetchExams = useCallback(async (isBackground = false) => {
     try {
       const res = await fetch("/api/admin/exams/live-stats");
-      
+
       if (res.status === 403) {
         router.push("/admin/login");
         return;
       }
 
-      if (res.ok) {
-        const data = await res.json();
-        setExams(data.exams || []);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
       }
+
+      const data = await res.json();
+      setExams(data.exams || []);
+      setError(null);
     } catch (err) {
-      console.error("Failed to fetch live stats:", err);
+      const message = err instanceof Error ? err.message : "Failed to fetch";
+      if (!isBackground) {
+        setError(message);
+      }
+      console.error("Failed to fetch live stats:", message);
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   }, [router]);
 
   useEffect(() => {
     fetchExams();
-    const interval = setInterval(fetchExams, 5000);
-    return () => clearInterval(interval);
+
+    const POLL_INTERVAL = 5000;
+    let intervalId: NodeJS.Timeout;
+
+    const scheduleNextPoll = () => {
+      intervalId = setTimeout(async () => {
+        await fetchExams(true);
+        scheduleNextPoll();
+      }, POLL_INTERVAL);
+    };
+
+    scheduleNextPoll();
+
+    return () => {
+      clearTimeout(intervalId);
+    };
   }, [fetchExams]);
 
   if (loading) {
@@ -60,6 +84,11 @@ export default function LiveMonitor() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">
+          {error}
+        </div>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Live Exam Monitor</h1>

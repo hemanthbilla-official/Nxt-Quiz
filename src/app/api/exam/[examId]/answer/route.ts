@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 import { isCodeSizeAllowed } from "@/lib/exam-scoring";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
-// SEC-05: Answer route — derive attemptId server-side instead of trusting client
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ examId: string }> },
@@ -40,18 +39,23 @@ export async function PUT(
     data: { user },
   } = await supabase.auth.getUser();
 
-  // BUG-01: Fix operator precedence
-  let userId = user?.id;
-  if (!userId && isSafeLocalBypassEnabled()) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
   }
 
-  // SEC-05: Server-side derivation of attemptId — never trust client-supplied value
   const admin = createAdminClient();
+  const { data: exam } = await admin
+    .from("exams")
+    .select("status")
+    .eq("id", examId)
+    .single();
+
+  if (exam?.status !== "in_progress") {
+    return NextResponse.json({ error: "Exam is not active" }, { status: 400 });
+  }
+
   const { data: attempt } = await admin
     .from("attempts")
     .select("id, server_due_at")
@@ -79,7 +83,6 @@ export async function PUT(
     return NextResponse.json({ error: "Question is not part of this exam" }, { status: 400 });
   }
 
-  // Build upsert payload: programming questions use code_answer, MCQ uses selected_option_id
   const upsertData: Record<string, unknown> = {
     attempt_id: attempt.id,
     question_id: questionId,
@@ -88,11 +91,9 @@ export async function PUT(
   };
 
   if (code_answer !== undefined) {
-    // Programming question answer
     upsertData.code_answer = code_answer;
     upsertData.code_language = code_language || "javascript";
   } else {
-    // MCQ answer
     upsertData.selected_option_id = selected_option_id || null;
     upsertData.answered_at = selected_option_id ? new Date().toISOString() : null;
     upsertData.cleared_at = !selected_option_id ? new Date().toISOString() : null;

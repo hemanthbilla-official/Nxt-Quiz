@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 type ReviewQuestionRow = {
   position: number;
@@ -23,12 +23,7 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = isSafeLocalBypassEnabled();
-  
-  if (!userId && isLocal) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });
@@ -36,7 +31,6 @@ export async function GET(
 
   const admin = createAdminClient();
 
-  // Get attempt
   const { data: attempt } = await admin
     .from("attempts")
     .select("id, server_due_at, status")
@@ -48,7 +42,6 @@ export async function GET(
     return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
   }
 
-  // Get questions (direct query)
   const { data: examQuestions } = await admin
     .from("exam_questions")
     .select(`
@@ -70,13 +63,11 @@ export async function GET(
     };
   });
 
-  // Get answers
   const { data: answers } = await admin
     .from("attempt_answers")
     .select("question_id, selected_option_id, is_bookmarked, is_skipped, code_answer, test_pass_count, test_fail_count")
     .eq("attempt_id", attempt.id);
 
-  // Get server time
   const { data: serverTimeData } = await admin.rpc("get_server_time");
   const serverNow = serverTimeData
     ? new Date(serverTimeData).getTime()

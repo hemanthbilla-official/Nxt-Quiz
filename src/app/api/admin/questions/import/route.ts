@@ -5,7 +5,6 @@ import { nanoid } from "nanoid";
 import { assertSameOriginRequest } from "@/lib/request-security";
 import { normalizeEditorFiles, serializeCodeFiles } from "@/lib/code-answer";
 
-// POST — bulk import questions
 export async function POST(request: Request) {
   const originError = assertSameOriginRequest(request);
   if (originError) return originError;
@@ -22,6 +21,21 @@ export async function POST(request: Request) {
 
   const supabase = createAdminClient();
 
+  if (examId) {
+    const { data: exam } = await supabase
+      .from("exams")
+      .select("status")
+      .eq("id", examId)
+      .single();
+
+    if (exam && exam.status !== "waiting" && exam.status !== "draft") {
+      return NextResponse.json(
+        { error: "Cannot modify questions for an active or closed exam" },
+        { status: 400 }
+      );
+    }
+  }
+
   interface ImportQuestion {
     id?: string;
     topic?: string;
@@ -37,7 +51,6 @@ export async function POST(request: Request) {
     explanation?: string;
     tags?: string[];
     points?: number;
-    // Programming fields
     starterCode?: string;
     starter_code?: string;
     starterFiles?: unknown;
@@ -51,7 +64,11 @@ export async function POST(request: Request) {
     language?: string;
   }
 
-  const formatted = questions.map((q: ImportQuestion) => {
+  const batchPrefix = examId
+    ? examId.slice(0, 8)
+    : nanoid(8);
+
+  const formatted = questions.map((q: ImportQuestion, i: number) => {
     const questionType = q.question_type || q.questionType || "theory";
     const challengeMode = q.challenge_mode || q.challengeMode || null;
     const isProgramming = questionType === "programming";
@@ -63,11 +80,11 @@ export async function POST(request: Request) {
         : q.starter_code || q.starterCode || null;
 
     return {
-      id: q.id || `q-${nanoid(12)}`,
+      id: `${batchPrefix}-${q.id || `q${i + 1}`}`,
       topic: q.topic || "Unknown",
       difficulty: q.difficulty || "Basic",
       question_type: questionType,
-      question: typeof q.question === "string" ? q.question : "",
+      question: q.question,
       code_snippet: q.code_snippet || q.codeSnippet || null,
       options: isProgramming
         ? null
@@ -87,16 +104,14 @@ export async function POST(request: Request) {
 
   const { data: insertedQuestions, error } = await supabase
     .from("questions")
-    .upsert(formatted, { onConflict: "id" })
+    .insert(formatted)
     .select();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Link questions to the exam if examId is provided
   if (examId && insertedQuestions) {
-    // Clear existing links for this exam to allow "overwrite" behavior
     await supabase.from("exam_questions").delete().eq("exam_id", examId);
 
     const examQuestions = insertedQuestions.map((q, i) => ({

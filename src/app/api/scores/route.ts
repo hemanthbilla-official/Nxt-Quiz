@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isSafeLocalBypassEnabled, LOCAL_STUDENT_ID } from "@/lib/environment";
+import { isLocalEnvironment, resolveUserIdForLocalBypass } from "@/lib/local-user";
 
 export async function GET() {
   const supabase = await createClient();
@@ -9,12 +9,8 @@ export async function GET() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let userId = user?.id;
-  const isLocal = isSafeLocalBypassEnabled();
-  
-  if (!userId && isLocal) {
-    userId = LOCAL_STUDENT_ID;
-  }
+  const isLocal = isLocalEnvironment();
+  const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
     return NextResponse.json({ error: "Auth required" }, { status: 401 });

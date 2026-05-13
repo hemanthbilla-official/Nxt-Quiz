@@ -7,6 +7,10 @@ export async function GET(
   { params }: { params: Promise<{ examId: string }> },
 ) {
   const { examId } = await params;
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get("limit") || "50")), 100);
+  const offset = (page - 1) * limit;
 
   const admin = await getAdminUser();
   if (!admin) {
@@ -370,6 +374,10 @@ export async function GET(
     };
   }).sort((a, b) => b.score - a.score); // Sort by score descending (leaderboard)
 
+  // Paginate student results
+  const totalStudents = studentResults.length;
+  const paginatedResults = studentResults.slice(offset, offset + limit);
+
   // Exam health metrics
   const sortedByCorrect = [...detailedQuestions].sort((a, b) => a.correctPercentage - b.correctPercentage);
   const hardestQuestion = sortedByCorrect.length > 0 ? sortedByCorrect[0] : null;
@@ -409,7 +417,13 @@ export async function GET(
     scoreDistribution,
     difficultyBreakdown,
     detailedQuestions,
-    studentResults,
+    studentResults: paginatedResults,
+    pagination: {
+      page,
+      limit,
+      total: totalStudents,
+      totalPages: Math.ceil(totalStudents / limit),
+    },
     timeAnalytics: {
       avgTimeSeconds: Math.round(avgTimeSeconds),
       fastestTimeSeconds: timeData.length > 0 ? Math.round(timeData[0]) : null,

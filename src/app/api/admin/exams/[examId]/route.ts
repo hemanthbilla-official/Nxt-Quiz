@@ -151,31 +151,69 @@ export async function DELETE(
   }
 
   const supabase = createAdminClient();
+  const deleteErrors: string[] = [];
 
-  // 1. Delete attempts (which cascades to attempt_answers if configured, but let's be safe)
-  const { data: attempts } = await supabase
-    .from("attempts")
-    .select("id")
-    .eq("exam_id", examId);
+  try {
+    // 1. Delete attempts (which cascades to attempt_answers if configured, but let's be safe)
+    const { data: attempts } = await supabase
+      .from("attempts")
+      .select("id")
+      .eq("exam_id", examId);
 
-  if (attempts && attempts.length > 0) {
-    const attemptIds = attempts.map((a) => a.id);
-    await supabase.from("attempt_answers").delete().in("attempt_id", attemptIds);
-    await supabase.from("attempts").delete().eq("exam_id", examId);
+    if (attempts && attempts.length > 0) {
+      const attemptIds = attempts.map((a) => a.id);
+      const { error: ansError } = await supabase.from("attempt_answers").delete().in("attempt_id", attemptIds);
+      if (ansError) deleteErrors.push(`attempt_answers: ${ansError.message}`);
+
+      const { error: attError } = await supabase.from("attempts").delete().eq("exam_id", examId);
+      if (attError) deleteErrors.push(`attempts: ${attError.message}`);
+    }
+
+    // 2. Delete participants
+    const { error: partError } = await supabase.from("exam_participants").delete().eq("exam_id", examId);
+    if (partError) deleteErrors.push(`exam_participants: ${partError.message}`);
+
+    // 3. BUG-D FIX: Capture question IDs before deleting links, then clean up orphans
+    const { data: examQuestionLinks } = await supabase
+      .from("exam_questions")
+      .select("question_id")
+      .eq("exam_id", examId);
+
+    const { error: eqError } = await supabase.from("exam_questions").delete().eq("exam_id", examId);
+    if (eqError) deleteErrors.push(`exam_questions: ${eqError.message}`);
+
+    // Delete exam events
+    const { error: evError } = await supabase.from("exam_events").delete().eq("exam_id", examId);
+    if (evError) deleteErrors.push(`exam_events: ${evError.message}`);
+
+    // 4. Delete the exam itself
+    const { error: examError } = await supabase.from("exams").delete().eq("id", examId);
+    if (examError) {
+      return NextResponse.json({ error: `Failed to delete exam: ${examError.message}` }, { status: 500 });
+    }
+
+    // 5. Clean up orphaned questions (only those not used by any other exam)
+    if (examQuestionLinks && examQuestionLinks.length > 0) {
+      for (const link of examQuestionLinks) {
+        const { count } = await supabase
+          .from("exam_questions")
+          .select("*", { count: "exact", head: true })
+          .eq("question_id", link.question_id);
+
+        if (count === 0) {
+          await supabase.from("questions").delete().eq("id", link.question_id);
+        }
+      }
+    }
+
+    if (deleteErrors.length > 0) {
+      console.error("Delete warnings:", deleteErrors);
+      return NextResponse.json({ success: true, warnings: deleteErrors });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: `Delete failed: ${message}` }, { status: 500 });
   }
-
-  // 2. Delete participants
-  await supabase.from("exam_participants").delete().eq("exam_id", examId);
-
-  // 3. Delete exam questions
-  await supabase.from("exam_questions").delete().eq("exam_id", examId);
-
-  // 4. Delete the exam itself
-  const { error } = await supabase.from("exams").delete().eq("id", examId);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
 }
