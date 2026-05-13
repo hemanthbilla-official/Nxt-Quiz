@@ -85,7 +85,11 @@ ALTER TABLE public.attempt_answers
 -- Expose new programming fields to the student during exam.
 -- Note: correct_option_id is intentionally NOT included (never sent to students).
 
-CREATE OR REPLACE VIEW public.student_exam_questions AS
+DROP VIEW IF EXISTS public.student_exam_questions;
+
+CREATE OR REPLACE VIEW public.student_exam_questions 
+WITH (security_invoker = true)
+AS
 SELECT
   eq.exam_id,
   eq.position,
@@ -121,7 +125,9 @@ WHERE public.is_admin() OR public.is_exam_participant(eq.exam_id);
 
 DROP VIEW IF EXISTS public.exam_question_analytics;
 
-CREATE VIEW public.exam_question_analytics AS
+CREATE VIEW public.exam_question_analytics 
+WITH (security_invoker = true)
+AS
 SELECT
   e.id AS exam_id,
   q.id AS question_id,

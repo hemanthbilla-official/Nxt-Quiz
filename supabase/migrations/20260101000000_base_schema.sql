@@ -378,7 +378,10 @@ on public.exam_events
 for select
 using (public.is_admin());
 
-create or replace view public.student_exam_questions as
+drop view if exists public.student_exam_questions;
+create or replace view public.student_exam_questions 
+with (security_invoker = true)
+as
 select
   eq.exam_id,
   eq.position,
@@ -518,7 +521,10 @@ begin
 end;
 $$;
 
-create or replace view public.exam_question_analytics as
+drop view if exists public.exam_question_analytics;
+create or replace view public.exam_question_analytics 
+with (security_invoker = true)
+as
 select
   e.id as exam_id,
   q.id as question_id,

@@ -22,6 +22,7 @@ import {
   MAX_EDITOR_FILES,
   serializeCodeAnswer,
 } from "@/lib/code-answer";
+import { DEFAULT_EXAM_CONTROLS, type ExamControls } from "@/lib/exam-controls";
 import type {
   ChallengeMode,
   ConsoleEntry,
@@ -41,12 +42,16 @@ type ProgrammingQuestionProps = {
   savedCode?: string;
   onCodeChange: (code: string) => void;
   examId: string;
+  controls?: ExamControls;
   theme?: "dark" | "light";
 };
 
 type NewFileKind = "jsx" | "css";
 
 const maxConsoleEntries = 100;
+const defaultEditorFontSize = 13;
+const minEditorFontSize = 11;
+const maxEditorFontSize = 20;
 const protectedComponentFiles = new Set(["App.jsx"]);
 
 function cloneFiles(files: EditorFile[]): EditorFile[] {
@@ -67,7 +72,7 @@ function toComponentName(fileName: string) {
       ?.replace(/\.(?:js|jsx)$/i, "") || "Component";
   const candidate = baseName
     .replace(/(?:^|[-_])([A-Za-z0-9_$])/g, (_match, char: string) =>
-      char.toUpperCase()
+      char.toUpperCase(),
     )
     .replace(/[^A-Za-z0-9_$]/g, "");
 
@@ -92,13 +97,16 @@ export default function ProgrammingQuestion({
   savedCode,
   onCodeChange,
   examId,
+  controls = DEFAULT_EXAM_CONTROLS,
   theme = "dark",
 }: ProgrammingQuestionProps) {
   // --- State ---
   const [files, setFiles] = useState<EditorFile[]>(() =>
-    createInitialCodeFiles({ challengeMode, starterCode, savedCode })
+    createInitialCodeFiles({ challengeMode, starterCode, savedCode }),
   );
-  const [activeFileName, setActiveFileName] = useState(files[0]?.name || "App.jsx");
+  const [activeFileName, setActiveFileName] = useState(
+    files[0]?.name || "App.jsx",
+  );
   const [previewFiles, setPreviewFiles] = useState<EditorFile[]>([]);
   const [status, setStatus] = useState<PreviewStatus>("ready");
   const [previewError, setPreviewError] = useState<PreviewError | undefined>();
@@ -108,6 +116,7 @@ export default function ProgrammingQuestion({
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [runCooldown, setRunCooldown] = useState(0);
   const [editorPercent, setEditorPercent] = useState(55);
+  const [editorFontSize, setEditorFontSize] = useState(defaultEditorFontSize);
   const [fileModalKind, setFileModalKind] = useState<NewFileKind | null>(null);
   const [newFileName, setNewFileName] = useState("");
   const [newFileError, setNewFileError] = useState("");
@@ -120,8 +129,17 @@ export default function ProgrammingQuestion({
 
   const activeFile = useMemo(
     () => files.find((file) => file.name === activeFileName) || files[0],
-    [activeFileName, files]
+    [activeFileName, files],
   );
+
+  useEffect(() => {
+    if (!controls.codeConsoleEnabled) {
+      setIsConsoleOpen(false);
+    }
+    if (!controls.codeFileActionsEnabled) {
+      setFileModalKind(null);
+    }
+  }, [controls.codeConsoleEnabled, controls.codeFileActionsEnabled]);
 
   // --- Reset state when question changes ---
   useEffect(() => {
@@ -134,7 +152,7 @@ export default function ProgrammingQuestion({
     filesRef.current = initialFiles;
     setActiveFileName(initialFiles[0]?.name || "App.jsx");
     // Auto-run preview for component mode so students don't see a blank pane
-    if (challengeMode === "component") {
+    if (challengeMode === "component" && controls.codePreviewEnabled) {
       setPreviewFiles(cloneFiles(initialFiles));
       setStatus("running");
     } else {
@@ -149,7 +167,13 @@ export default function ProgrammingQuestion({
     setFileModalKind(null);
     setNewFileName("");
     setNewFileError("");
-  }, [challengeMode, questionId, savedCode, starterCode]);
+  }, [
+    challengeMode,
+    controls.codePreviewEnabled,
+    questionId,
+    savedCode,
+    starterCode,
+  ]);
 
   const emitCodeChange = useCallback(
     (nextFiles: EditorFile[], immediate = false) => {
@@ -168,21 +192,21 @@ export default function ProgrammingQuestion({
         onCodeChange(serialized);
       }, 2500);
     },
-    [challengeMode, onCodeChange]
+    [challengeMode, onCodeChange],
   );
 
   // --- Autosave (2-3 second debounce) ---
   const handleCodeChange = useCallback(
     (newCode: string) => {
       const nextFiles = filesRef.current.map((file) =>
-        file.name === activeFileName ? { ...file, content: newCode } : file
+        file.name === activeFileName ? { ...file, content: newCode } : file,
       );
 
       setFiles(nextFiles);
       filesRef.current = nextFiles;
       emitCodeChange(nextFiles);
     },
-    [activeFileName, emitCodeChange]
+    [activeFileName, emitCodeChange],
   );
 
   // Cleanup autosave timer
@@ -200,7 +224,7 @@ export default function ProgrammingQuestion({
     setNewFileError(
       filesRef.current.length >= MAX_EDITOR_FILES
         ? `You can create up to ${MAX_EDITOR_FILES} files.`
-        : ""
+        : "",
     );
   }, []);
 
@@ -227,9 +251,7 @@ export default function ProgrammingQuestion({
     }
 
     if (!isValidEditorFileName(fileName)) {
-      setNewFileError(
-        "Use a relative file name ending in .js, .jsx, or .css."
-      );
+      setNewFileError("Use a relative file name ending in .js, .jsx, or .css.");
       return;
     }
 
@@ -274,7 +296,7 @@ export default function ProgrammingQuestion({
     }
 
     const nextFiles = filesRef.current.filter(
-      (file) => file.name !== activeFile.name
+      (file) => file.name !== activeFile.name,
     );
     setFiles(nextFiles);
     filesRef.current = nextFiles;
@@ -292,13 +314,17 @@ export default function ProgrammingQuestion({
 
   // --- Run Tests (calls server API → Edge Function) ---
   const runTests = useCallback(async () => {
-    if (isRunningTests || runCooldown > 0) return;
+    if (!controls.codeRunTestsEnabled || isRunningTests || runCooldown > 0)
+      return;
 
     setIsRunningTests(true);
     setRunResults(null);
 
     // Flush current code to server before running
-    const serializedAnswer = serializeCodeAnswer(filesRef.current, challengeMode);
+    const serializedAnswer = serializeCodeAnswer(
+      filesRef.current,
+      challengeMode,
+    );
     onCodeChange(serializedAnswer);
 
     try {
@@ -320,7 +346,11 @@ export default function ProgrammingQuestion({
         setRunResults({
           success: false,
           results: [],
-          summary: { passed: 0, failed: testCases.length, total: testCases.length },
+          summary: {
+            passed: 0,
+            failed: testCases.length,
+            total: testCases.length,
+          },
           error: errorData.error || "Failed to run tests",
         });
       }
@@ -328,7 +358,11 @@ export default function ProgrammingQuestion({
       setRunResults({
         success: false,
         results: [],
-        summary: { passed: 0, failed: testCases.length, total: testCases.length },
+        summary: {
+          passed: 0,
+          failed: testCases.length,
+          total: testCases.length,
+        },
         error: "Network error — could not reach the server",
       });
     } finally {
@@ -348,7 +382,16 @@ export default function ProgrammingQuestion({
         });
       }, 1000);
     }
-  }, [challengeMode, isRunningTests, runCooldown, examId, questionId, testCases.length, onCodeChange]);
+  }, [
+    challengeMode,
+    controls.codeRunTestsEnabled,
+    isRunningTests,
+    runCooldown,
+    examId,
+    questionId,
+    testCases.length,
+    onCodeChange,
+  ]);
 
   // Cleanup cooldown timer
   useEffect(() => {
@@ -361,7 +404,7 @@ export default function ProgrammingQuestion({
 
   // --- Format code with Prettier ---
   const formatCode = useCallback(async () => {
-    if (!activeFile) return;
+    if (!controls.codeFormatEnabled || !activeFile) return;
 
     try {
       const formatted = await prettier.format(activeFile.content, {
@@ -372,7 +415,7 @@ export default function ProgrammingQuestion({
       });
       const trimmed = formatted.trimEnd();
       const nextFiles = filesRef.current.map((file) =>
-        file.name === activeFile.name ? { ...file, content: trimmed } : file
+        file.name === activeFile.name ? { ...file, content: trimmed } : file,
       );
       setFiles(nextFiles);
       filesRef.current = nextFiles;
@@ -383,7 +426,7 @@ export default function ProgrammingQuestion({
       setStatus("error");
       setPreviewError({ message });
     }
-  }, [activeFile, emitCodeChange]);
+  }, [activeFile, controls.codeFormatEnabled, emitCodeChange]);
 
   // --- Preview callbacks ---
   const handleStatusChange = useCallback((payload: PreviewStatusPayload) => {
@@ -400,53 +443,54 @@ export default function ProgrammingQuestion({
     function handleKeyDown(event: KeyboardEvent) {
       if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
         event.preventDefault();
-        if (challengeMode === "component") {
+        if (challengeMode === "component" && controls.codePreviewEnabled) {
           runPreview();
         }
       }
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "s"
-      ) {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void formatCode();
+        if (controls.codeFormatEnabled) {
+          void formatCode();
+        }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [challengeMode, runPreview, formatCode]);
+  }, [
+    challengeMode,
+    controls.codeFormatEnabled,
+    controls.codePreviewEnabled,
+    runPreview,
+    formatCode,
+  ]);
 
   // --- Resize handle ---
   const workspaceRef = useRef<HTMLDivElement | null>(null);
 
-  const startResize = useCallback(
-    (event: React.PointerEvent<HTMLElement>) => {
-      const workspace = workspaceRef.current;
-      if (!workspace) return;
+  const startResize = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
 
-      event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture(event.pointerId);
 
-      function updatePercent(e: PointerEvent) {
-        const rect = workspace!.getBoundingClientRect();
-        const nextPercent = ((e.clientX - rect.left) / rect.width) * 100;
-        setEditorPercent(Math.min(72, Math.max(28, nextPercent)));
-      }
+    function updatePercent(e: PointerEvent) {
+      const rect = workspace!.getBoundingClientRect();
+      const nextPercent = ((e.clientX - rect.left) / rect.width) * 100;
+      setEditorPercent(Math.min(72, Math.max(28, nextPercent)));
+    }
 
-      function stopResize() {
-        window.removeEventListener("pointermove", updatePercent);
-        window.removeEventListener("pointerup", stopResize);
-      }
+    function stopResize() {
+      window.removeEventListener("pointermove", updatePercent);
+      window.removeEventListener("pointerup", stopResize);
+    }
 
-      window.addEventListener("pointermove", updatePercent);
-      window.addEventListener("pointerup", stopResize);
-    },
-    []
-  );
+    window.addEventListener("pointermove", updatePercent);
+    window.addEventListener("pointerup", stopResize);
+  }, []);
 
   // --- Error line ---
-  const activeErrorLine =
-    status === "error" ? previewError?.line : undefined;
+  const activeErrorLine = status === "error" ? previewError?.line : undefined;
 
   // --- Status text ---
   const statusText = useMemo(() => {
@@ -461,13 +505,17 @@ export default function ProgrammingQuestion({
 
   const statusClass = useMemo(() => {
     if (status === "error") return "pe-statusError";
-    if (runResults?.summary.failed === 0 && runResults.summary.passed > 0) return "pe-statusPass";
+    if (runResults?.summary.failed === 0 && runResults.summary.passed > 0)
+      return "pe-statusPass";
     if (runResults?.summary.failed) return "pe-statusFail";
     return "pe-statusReady";
   }, [status, runResults]);
 
   const workspaceStyle = {
     "--pe-editor-width": `${editorPercent}%`,
+  } as CSSProperties;
+  const editorPaneStyle = {
+    "--pe-code-font-size": `${editorFontSize}px`,
   } as CSSProperties;
 
   const isComponentMode = challengeMode === "component";
@@ -481,7 +529,7 @@ export default function ProgrammingQuestion({
           <span className={`pe-status ${statusClass}`}>{statusText}</span>
         </div>
         <div className="pe-toolbarRight">
-          {isComponentMode && (
+          {isComponentMode && controls.codePreviewEnabled && (
             <button
               className="pe-btn pe-btnRun"
               type="button"
@@ -491,49 +539,90 @@ export default function ProgrammingQuestion({
               ▶ Preview
             </button>
           )}
-          <button
-            className="pe-btn pe-btnTest"
-            type="button"
-            onClick={runTests}
-            disabled={isRunningTests || runCooldown > 0}
-            title="Run test cases"
-          >
-            {isRunningTests
-              ? "Running..."
-              : runCooldown > 0
-                ? `Wait ${runCooldown}s`
-                : "▶ Run Tests"}
-          </button>
-          <button
-            className="pe-btn"
-            type="button"
-            onClick={formatCode}
-            title="Format code (Ctrl+S)"
-          >
-            Format
-          </button>
-          <button
-            className="pe-btn pe-btnSmall"
-            type="button"
-            onClick={() => setIsConsoleOpen((v) => !v)}
-            title={isConsoleOpen ? "Close console" : "Open console"}
-          >
-            Console
-          </button>
+          {controls.codeRunTestsEnabled && (
+            <button
+              className="pe-btn pe-btnTest"
+              type="button"
+              onClick={runTests}
+              disabled={isRunningTests || runCooldown > 0}
+              title="Run test cases"
+            >
+              {isRunningTests
+                ? "Running..."
+                : runCooldown > 0
+                  ? `Wait ${runCooldown}s`
+                  : "▶ Run Tests"}
+            </button>
+          )}
+          {controls.codeFormatEnabled && (
+            <button
+              className="pe-btn"
+              type="button"
+              onClick={formatCode}
+              title="Format code (Ctrl+S)"
+            >
+              Format
+            </button>
+          )}
+          {controls.codeZoomEnabled && (
+            <div className="pe-codeZoom" aria-label="Code zoom controls">
+              <button
+                className="pe-iconBtn"
+                type="button"
+                onClick={() =>
+                  setEditorFontSize((size) =>
+                    Math.max(minEditorFontSize, size - 1),
+                  )
+                }
+                disabled={editorFontSize <= minEditorFontSize}
+                title="Zoom code out"
+                aria-label="Zoom code out"
+              >
+                -
+              </button>
+              <span className="pe-zoomValue" aria-label="Code font size">
+                {editorFontSize}px
+              </span>
+              <button
+                className="pe-iconBtn"
+                type="button"
+                onClick={() =>
+                  setEditorFontSize((size) =>
+                    Math.min(maxEditorFontSize, size + 1),
+                  )
+                }
+                disabled={editorFontSize >= maxEditorFontSize}
+                title="Zoom code in"
+                aria-label="Zoom code in"
+              >
+                +
+              </button>
+            </div>
+          )}
+          {controls.codeConsoleEnabled && (
+            <button
+              className="pe-btn pe-btnSmall"
+              type="button"
+              onClick={() => setIsConsoleOpen((v) => !v)}
+              title={isConsoleOpen ? "Close console" : "Open console"}
+            >
+              Console
+            </button>
+          )}
         </div>
       </div>
 
       {/* Workspace */}
-      <div
-        ref={workspaceRef}
-        className="pe-workspace"
-        style={workspaceStyle}
-      >
+      <div ref={workspaceRef} className="pe-workspace" style={workspaceStyle}>
         {/* Editor panel */}
         <div className="pe-editorPanel">
           {isComponentMode && (
             <div className="pe-fileBar">
-              <div className="pe-fileTabs" role="tablist" aria-label="Editor files">
+              <div
+                className="pe-fileTabs"
+                role="tablist"
+                aria-label="Editor files"
+              >
                 {files.map((file) => (
                   <button
                     key={file.name}
@@ -550,41 +639,46 @@ export default function ProgrammingQuestion({
                   </button>
                 ))}
               </div>
-              <div className="pe-fileActions">
-                <button
-                  className="pe-iconBtn"
-                  type="button"
-                  onClick={() => openFileModal("jsx")}
-                  disabled={isAtFileLimit}
-                  title="Add JavaScript or JSX file"
-                  aria-label="Add JavaScript or JSX file"
-                >
-                  +JS
-                </button>
-                <button
-                  className="pe-iconBtn"
-                  type="button"
-                  onClick={() => openFileModal("css")}
-                  disabled={isAtFileLimit}
-                  title="Add CSS file"
-                  aria-label="Add CSS file"
-                >
-                  +CSS
-                </button>
-                <button
-                  className="pe-iconBtn pe-iconBtnDanger"
-                  type="button"
-                  onClick={deleteActiveFile}
-                  disabled={!activeFile || protectedComponentFiles.has(activeFile.name)}
-                  title="Delete current file"
-                  aria-label="Delete current file"
-                >
-                  x
-                </button>
-              </div>
+              {controls.codeFileActionsEnabled && (
+                <div className="pe-fileActions">
+                  <button
+                    className="pe-iconBtn"
+                    type="button"
+                    onClick={() => openFileModal("jsx")}
+                    disabled={isAtFileLimit}
+                    title="Add JavaScript or JSX file"
+                    aria-label="Add JavaScript or JSX file"
+                  >
+                    +JS
+                  </button>
+                  <button
+                    className="pe-iconBtn"
+                    type="button"
+                    onClick={() => openFileModal("css")}
+                    disabled={isAtFileLimit}
+                    title="Add CSS file"
+                    aria-label="Add CSS file"
+                  >
+                    +CSS
+                  </button>
+                  <button
+                    className="pe-iconBtn pe-iconBtnDanger"
+                    type="button"
+                    onClick={deleteActiveFile}
+                    disabled={
+                      !activeFile ||
+                      protectedComponentFiles.has(activeFile.name)
+                    }
+                    title="Delete current file"
+                    aria-label="Delete current file"
+                  >
+                    x
+                  </button>
+                </div>
+              )}
             </div>
           )}
-          <div className="pe-editorPane">
+          <div className="pe-editorPane" style={editorPaneStyle}>
             <CodeEditor
               value={activeFile?.content || ""}
               language={activeFile?.language || "javascript"}
@@ -607,9 +701,11 @@ export default function ProgrammingQuestion({
         </div>
 
         {/* Right panel: preview (component mode) + tests */}
-        <div className={`pe-rightPanel ${isComponentMode ? "pe-rightPanelSplit" : ""}`}>
+        <div
+          className={`pe-rightPanel ${isComponentMode ? "pe-rightPanelSplit" : ""}`}
+        >
           {/* Live preview — only for component challenges */}
-          {isComponentMode && (
+          {isComponentMode && controls.codePreviewEnabled && (
             <div className="pe-previewSection">
               <div className="pe-sectionHeader">
                 <span className="pe-sectionTitle">Preview</span>
@@ -639,7 +735,7 @@ export default function ProgrammingQuestion({
           />
 
           {/* Console panel */}
-          {isConsoleOpen && (
+          {controls.codeConsoleEnabled && isConsoleOpen && (
             <div className="pe-consoleSection">
               <div className="pe-sectionHeader">
                 <span className="pe-sectionTitle">Console</span>
@@ -660,9 +756,7 @@ export default function ProgrammingQuestion({
                       key={entry.id}
                       className={`pe-consoleLine pe-console-${entry.level}`}
                     >
-                      <span className="pe-consoleTime">
-                        {entry.timestamp}
-                      </span>
+                      <span className="pe-consoleTime">{entry.timestamp}</span>
                       <span className="pe-consoleLevel">{entry.level}</span>
                       <pre>{entry.message}</pre>
                     </div>
@@ -674,7 +768,7 @@ export default function ProgrammingQuestion({
         </div>
       </div>
 
-      {fileModalKind && (
+      {controls.codeFileActionsEnabled && fileModalKind && (
         <div className="pe-modalOverlay">
           <form
             className="pe-modal"
@@ -750,9 +844,7 @@ export default function ProgrammingQuestion({
 
       {/* Error banner */}
       {runResults?.error && (
-        <div className="pe-errorBanner">
-          {runResults.error}
-        </div>
+        <div className="pe-errorBanner">{runResults.error}</div>
       )}
     </div>
   );

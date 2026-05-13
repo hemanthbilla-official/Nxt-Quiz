@@ -146,6 +146,35 @@
   font-size: 0.72rem;
 }
 
+.pe-codeZoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+  border: 1px solid var(--pe-line);
+  border-radius: 6px;
+  background: var(--pe-panel);
+}
+
+.pe-codeZoom .pe-iconBtn {
+  min-width: 1.65rem;
+  min-height: 1.45rem;
+  padding: 0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.pe-zoomValue {
+  min-width: 2.25rem;
+  color: var(--pe-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Workspace (editor + right panel) ---- */
 
 .pe-workspace {
@@ -345,16 +374,35 @@
 .pe-editorPane {
   flex: 1;
   min-height: 0;
+  max-height: 100%;
   overflow: hidden;
+}
+
+.pe-editorPane .cm-theme {
+  height: 100%;
+  max-height: 100%;
 }
 
 .pe-editorPane .cm-editor {
   height: 100%;
-  font-size: 13px;
+  max-height: 100%;
+  font-size: var(--pe-code-font-size, 13px);
 }
 
 .pe-editorPane .cm-scroller {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.pe-editorPane .cm-content {
+  max-width: 100%;
+}
+
+.pe-editorPane .cm-line {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .pe-editorPane .cm-errorLine {

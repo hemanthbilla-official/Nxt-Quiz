@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isLocalEnvironment, isLocalSupabaseUrl } from "@/lib/local-user";
 
 export type ChallengeMode = "function" | "component";
 
@@ -80,6 +81,20 @@ function asSummary(value: unknown): RunCodeSummary {
     failed: Number.isFinite(failed) && failed >= 0 ? failed : 0,
     total: Number.isFinite(total) && total > 0 ? total : 0,
   };
+}
+
+function shouldUseLocalCodeRunnerFallback(reason: unknown) {
+  if (process.env.NODE_ENV === "production") return false;
+  if (!isLocalEnvironment() && !isLocalSupabaseUrl()) return false;
+
+  const message =
+    typeof reason === "string"
+      ? reason
+      : reason instanceof Error
+        ? reason.message
+        : JSON.stringify(reason);
+
+  return message.toLowerCase().includes("name resolution failed");
 }
 
 export function sanitizeFunctionName(functionName: unknown) {
@@ -174,26 +189,48 @@ async function callRunCodeFunction(task: ProgrammingTask) {
     throw new Error("Code execution is not configured.");
   }
 
-  const edgeRes = await fetch(`${supabaseUrl}/functions/v1/run-code`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${edgeFunctionKey}`,
-      apikey: edgeFunctionKey,
-    },
-    body: JSON.stringify({
-      code: task.code,
-      testCases: task.testCases,
-      functionName: task.functionName,
-      challengeMode: task.challengeMode,
-    }),
-  });
+  const requestBody = {
+    code: task.code,
+    testCases: task.testCases,
+    functionName: task.functionName,
+    challengeMode: task.challengeMode,
+  };
 
-  if (!edgeRes.ok) {
-    throw new Error("Code execution failed.");
+  async function runLocalFallback(reason: unknown) {
+    console.warn("Using local code runner fallback for scoring:", reason);
+    const { executeCodeLocally } = await import("@/lib/local-code-runner");
+
+    return executeCodeLocally(requestBody);
   }
 
-  return edgeRes.json() as Promise<RunCodeResult>;
+  try {
+    const edgeRes = await fetch(`${supabaseUrl}/functions/v1/run-code`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${edgeFunctionKey}`,
+        apikey: edgeFunctionKey,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!edgeRes.ok) {
+      const errorText = await edgeRes.text();
+      if (shouldUseLocalCodeRunnerFallback(errorText)) {
+        return runLocalFallback(errorText);
+      }
+
+      throw new Error(`Code execution failed: ${errorText}`);
+    }
+
+    return edgeRes.json() as Promise<RunCodeResult>;
+  } catch (error) {
+    if (shouldUseLocalCodeRunnerFallback(error)) {
+      return runLocalFallback(error);
+    }
+
+    throw error;
+  }
 }
 
 export async function scoreAttempt({

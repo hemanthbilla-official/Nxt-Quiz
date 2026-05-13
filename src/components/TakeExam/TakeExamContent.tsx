@@ -3,9 +3,19 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/browser";
-import { hasActiveExamNavigationIntent, markExamNavigationIntent } from "@/lib/exam-navigation";
+import {
+  hasActiveExamNavigationIntent,
+  markExamNavigationIntent,
+} from "@/lib/exam-navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import type { Question, AnswerState, ApiExamQuestion, ExistingAnswer, ChallengeMode } from "@/lib/quizTypes";
+import { DEFAULT_EXAM_CONTROLS, type ExamControls } from "@/lib/exam-controls";
+import type {
+  Question,
+  AnswerState,
+  ApiExamQuestion,
+  ExistingAnswer,
+  ChallengeMode,
+} from "@/lib/quizTypes";
 import { shuffleArray } from "@/lib/utils/random";
 
 import { QuestionDisplay } from "./QuestionDisplay";
@@ -27,6 +37,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [controls, setControls] = useState<ExamControls>(DEFAULT_EXAM_CONTROLS);
   const attemptIdRef = useRef<string | null>(null);
 
   const [showNav, setShowNav] = useState(true);
@@ -52,15 +63,20 @@ export function TakeExamContent({ examId }: { examId: string }) {
       }
 
       if (document.hidden && attemptId && !loading) {
-        setShowTabWarning(true);
-        try {
-          await fetch(`/api/exam/${examId}/proctor`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({}),
-          });
-        } catch (err) {
-          console.error("Failed to report proctoring event:", err);
+        if (controls.tabSwitchWarningEnabled) {
+          setShowTabWarning(true);
+        }
+
+        if (controls.proctoringEnabled) {
+          try {
+            await fetch(`/api/exam/${examId}/proctor`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+          } catch (err) {
+            console.error("Failed to report proctoring event:", err);
+          }
         }
       }
     };
@@ -68,21 +84,35 @@ export function TakeExamContent({ examId }: { examId: string }) {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [attemptId, examId, loading]);
+  }, [
+    attemptId,
+    controls.proctoringEnabled,
+    controls.tabSwitchWarningEnabled,
+    examId,
+    loading,
+  ]);
 
-  // Proctoring: Prevent Right Click and Copy
+  // Proctoring: Prevent right click and clipboard actions when enabled.
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => e.preventDefault();
-    const handleCopy = (e: ClipboardEvent) => e.preventDefault();
+    const handleClipboard = (e: ClipboardEvent) => e.preventDefault();
 
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("copy", handleCopy);
+    if (controls.rightClickBlocked) {
+      document.addEventListener("contextmenu", handleContextMenu);
+    }
+    if (controls.copyPasteBlocked) {
+      document.addEventListener("copy", handleClipboard);
+      document.addEventListener("cut", handleClipboard);
+      document.addEventListener("paste", handleClipboard);
+    }
 
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("copy", handleClipboard);
+      document.removeEventListener("cut", handleClipboard);
+      document.removeEventListener("paste", handleClipboard);
     };
-  }, []);
+  }, [controls.copyPasteBlocked, controls.rightClickBlocked]);
 
   // Realtime subscription for time extensions
   useEffect(() => {
@@ -106,9 +136,12 @@ export function TakeExamContent({ examId }: { examId: string }) {
             const nowMs = Date.now() + serverDrift;
             const remaining = Math.max(0, Math.floor((dueAtMs - nowMs) / 1000));
             setTimeLeft(remaining);
-            console.log("⏰ Time extended (Personal)! New remaining:", remaining);
+            console.log(
+              "⏰ Time extended (Personal)! New remaining:",
+              remaining,
+            );
           }
-        }
+        },
       )
       .subscribe();
 
@@ -131,7 +164,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
             setTimeLeft(remaining);
             console.log("🌍 Time extended (Global)! New remaining:", remaining);
           }
-        }
+        },
       )
       .subscribe();
 
@@ -177,7 +210,13 @@ export function TakeExamContent({ examId }: { examId: string }) {
         }
 
         const data = await res.json();
-        const { attempt, questions: examQuestions, answers: existingAnswers, serverNow } = data;
+        const {
+          attempt,
+          questions: examQuestions,
+          answers: existingAnswers,
+          serverNow,
+          controls: loadedControls,
+        } = data;
 
         if (attempt.status === "submitted") {
           router.push(`/exam/${examId}/submitted`);
@@ -186,6 +225,9 @@ export function TakeExamContent({ examId }: { examId: string }) {
 
         setAttemptId(attempt.id);
         attemptIdRef.current = attempt.id;
+        if (loadedControls) {
+          setControls(loadedControls);
+        }
 
         setServerDrift(serverNow - Date.now());
 
@@ -209,7 +251,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
               challengeMode: (eq.challenge_mode as ChallengeMode) || undefined,
               testCases: eq.test_cases || undefined,
               language: eq.language || undefined,
-            })
+            }),
           );
 
           const shuffled = shuffleArray(enriched, attempt.id);
@@ -298,7 +340,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
         setSaving(false);
       }, 500);
     },
-    [attemptId, examId]
+    [attemptId, examId],
   );
 
   const selectOption = (questionId: string, optionId: string) => {
@@ -387,14 +429,17 @@ export function TakeExamContent({ examId }: { examId: string }) {
         }),
       }).catch(console.error);
     },
-    [attemptId, answers, examId]
+    [attemptId, answers, examId],
   );
 
   if (loading) {
     return (
       <div className="screen-loader">
         <div className="screen-loader-content animate-fade-in">
-          <div className="spinner mx-auto mb-4" style={{ width: 40, height: 40 }} />
+          <div
+            className="spinner mx-auto mb-4"
+            style={{ width: 40, height: 40 }}
+          />
           <p className="text-muted-foreground">Loading exam...</p>
         </div>
       </div>
@@ -405,9 +450,12 @@ export function TakeExamContent({ examId }: { examId: string }) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="glass-card p-8 max-w-md w-full text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">No Questions Found</h2>
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            No Questions Found
+          </h2>
           <p className="text-muted-foreground mb-8">
-            This exam doesn&apos;t seem to have any questions assigned yet. Please contact the administrator.
+            This exam doesn&apos;t seem to have any questions assigned yet.
+            Please contact the administrator.
           </p>
           <button
             onClick={() => router.push("/exam/join")}
@@ -427,7 +475,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
   const isUrgent = timeLeft !== null && timeLeft < 300;
 
   const answeredCount = Object.values(answers).filter(
-    (a) => a.selected_option_id || a.code_answer?.trim()
+    (a) => a.selected_option_id || a.code_answer?.trim(),
   ).length;
 
   const isProgrammingQuestion = currentQuestion.questionType === "programming";
@@ -462,7 +510,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
                 Saving
               </span>
             )}
-            <ThemeToggle />
+            {controls.themeToggleEnabled && <ThemeToggle />}
             <span className="text-xs text-muted-foreground">
               {answeredCount}/{questions.length} answered
             </span>
@@ -497,25 +545,29 @@ export function TakeExamContent({ examId }: { examId: string }) {
             skipQuestion={skipQuestion}
             setCurrentIndex={setCurrentIndex}
             saveCodeAnswer={saveCodeAnswer}
+            controls={controls}
           />
         </main>
 
-        <QuestionNavigator
-          questions={questions}
-          answers={answers}
-          currentIndex={currentIndex}
-          setCurrentIndex={setCurrentIndex}
-          showNav={showNav}
-          setShowNav={setShowNav}
-          examId={examId}
-        />
+        {controls.questionNavigatorEnabled && (
+          <QuestionNavigator
+            questions={questions}
+            answers={answers}
+            currentIndex={currentIndex}
+            setCurrentIndex={setCurrentIndex}
+            showNav={showNav}
+            setShowNav={setShowNav}
+            examId={examId}
+          />
+        )}
       </div>
 
       <ProctoringModals
-        showTabWarning={showTabWarning}
+        showTabWarning={controls.tabSwitchWarningEnabled && showTabWarning}
         setShowTabWarning={setShowTabWarning}
         isFullScreen={isFullScreen}
         loading={loading}
+        fullscreenRequired={controls.fullscreenRequired}
         enterFullScreen={enterFullScreen}
       />
     </div>

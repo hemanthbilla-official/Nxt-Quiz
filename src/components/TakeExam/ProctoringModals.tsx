@@ -3,6 +3,7 @@ interface ProctoringModalsProps {
   setShowTabWarning: (show: boolean) => void;
   isFullScreen: boolean;
   loading: boolean;
+  fullscreenRequired: boolean;
   enterFullScreen: () => void;
 }
 
@@ -11,6 +12,7 @@ export function ProctoringModals({
   setShowTabWarning,
   isFullScreen,
   loading,
+  fullscreenRequired,
   enterFullScreen,
 }: ProctoringModalsProps) {
   return (
@@ -55,7 +57,7 @@ export function ProctoringModals({
       )}
 
       {/* Full screen enforcement modal */}
-      {!isFullScreen && !loading && (
+      {fullscreenRequired && !isFullScreen && !loading && (
         <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden">
           <div className="glass-card p-8 max-w-md w-full text-center animate-slide-up shadow-2xl border-primary/20">
             <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">

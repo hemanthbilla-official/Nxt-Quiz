@@ -49,6 +49,37 @@ create table if not exists public.exams (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.app_controls (
+  key text primary key,
+  value jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by uuid null references public.profiles(id) on delete set null
+);
+
+insert into public.app_controls (key, value)
+values (
+  'exam_controls',
+  '{
+    "proctoringEnabled": true,
+    "tabSwitchWarningEnabled": true,
+    "fullscreenRequired": true,
+    "copyPasteBlocked": true,
+    "rightClickBlocked": true,
+    "questionNavigatorEnabled": true,
+    "bookmarksEnabled": true,
+    "skipEnabled": true,
+    "clearAnswerEnabled": true,
+    "themeToggleEnabled": true,
+    "codeRunTestsEnabled": true,
+    "codePreviewEnabled": true,
+    "codeFormatEnabled": true,
+    "codeConsoleEnabled": true,
+    "codeFileActionsEnabled": true,
+    "codeZoomEnabled": true
+  }'::jsonb
+)
+on conflict (key) do nothing;
+
 create table if not exists public.questions (
   id text primary key,
   topic text not null,
@@ -264,6 +295,7 @@ $$;
 
 alter table public.profiles enable row level security;
 alter table public.exams enable row level security;
+alter table public.app_controls enable row level security;
 alter table public.questions enable row level security;
 alter table public.exam_questions enable row level security;
 alter table public.exam_participants enable row level security;
@@ -274,6 +306,8 @@ alter table public.exam_events enable row level security;
 drop policy if exists profiles_select_own_or_admin on public.profiles;
 drop policy if exists profiles_update_own_student_id on public.profiles;
 drop policy if exists exams_select_joined_or_admin on public.exams;
+drop policy if exists app_controls_select_admin on public.app_controls;
+drop policy if exists app_controls_update_admin on public.app_controls;
 drop policy if exists exam_participants_select_own_or_admin on public.exam_participants;
 drop policy if exists exam_participants_update_own_presence on public.exam_participants;
 drop policy if exists questions_select_admin on public.questions;
@@ -295,6 +329,17 @@ create policy exams_select_joined_or_admin
 on public.exams
 for select
 using (public.is_admin() or public.is_exam_participant(id));
+
+create policy app_controls_select_admin
+on public.app_controls
+for select
+using (public.is_admin());
+
+create policy app_controls_update_admin
+on public.app_controls
+for all
+using (public.is_admin())
+with check (public.is_admin());
 
 create policy exam_participants_select_own_or_admin
 on public.exam_participants
@@ -378,7 +423,10 @@ on public.exam_events
 for select
 using (public.is_admin());
 
-create or replace view public.student_exam_questions as
+drop view if exists public.student_exam_questions;
+create or replace view public.student_exam_questions 
+with (security_invoker = true)
+as
 select
   eq.exam_id,
   eq.position,
@@ -518,7 +566,10 @@ begin
 end;
 $$;
 
-create or replace view public.exam_question_analytics as
+drop view if exists public.exam_question_analytics;
+create or replace view public.exam_question_analytics 
+with (security_invoker = true)
+as
 select
   e.id as exam_id,
   q.id as question_id,

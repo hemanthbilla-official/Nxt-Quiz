@@ -630,7 +630,7 @@ export default function Submitted({
                           return (
                             <div
                               key={opt.id}
-                              className={`relative p-4 rounded-2xl border-2 transition-all flex items-start gap-4 overflow-hidden ${stateClass}`}
+                              className={`p-4 rounded-2xl border-2 transition-all flex items-start gap-4 ${stateClass}`}
                             >
                               <div
                                 className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-xs font-black ${
@@ -645,20 +645,24 @@ export default function Submitted({
                               >
                                 {opt.id}
                               </div>
-                              <span className="text-sm pt-0.5 flex-1">
-                                {opt.text}
-                              </span>
+                              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2">
+                                <span className="min-w-0 flex-1 text-sm leading-relaxed">
+                                  {opt.text}
+                                </span>
 
-                              {isUserChoice && (
-                                <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-foreground text-background text-[9px] font-black rounded-full uppercase">
-                                  Your Choice
-                                </span>
-                              )}
-                              {isTheCorrectAnswer && !isUserChoice && (
-                                <span className="absolute -top-2.5 right-4 px-2 py-0.5 bg-success text-white text-[9px] font-black rounded-full uppercase">
-                                  Correct Answer
-                                </span>
-                              )}
+                                <div className="flex shrink-0 flex-wrap gap-1.5">
+                                  {isUserChoice && (
+                                    <span className="rounded-full bg-foreground px-2.5 py-1 text-[9px] font-black uppercase leading-none text-background">
+                                      Your Choice
+                                    </span>
+                                  )}
+                                  {isTheCorrectAnswer && !isUserChoice && (
+                                    <span className="rounded-full bg-success px-2.5 py-1 text-[9px] font-black uppercase leading-none text-white">
+                                      Correct Answer
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           );
                         })}

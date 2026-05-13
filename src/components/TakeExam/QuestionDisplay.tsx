@@ -1,11 +1,19 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Question, AnswerState } from "@/lib/quizTypes";
+import type { ExamControls } from "@/lib/exam-controls";
 import { markExamNavigationIntent } from "@/lib/exam-navigation";
 
 const ProgrammingQuestion = dynamic(
   () => import("@/components/CodeEditor/ProgrammingQuestion"),
-  { ssr: false, loading: () => <div className="p-8 text-center text-muted-foreground">Loading editor...</div> }
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-8 text-center text-muted-foreground">
+        Loading editor...
+      </div>
+    ),
+  },
 );
 
 interface QuestionDisplayProps {
@@ -21,6 +29,7 @@ interface QuestionDisplayProps {
   skipQuestion: (qId: string) => void;
   setCurrentIndex: (index: number) => void;
   saveCodeAnswer: (qId: string, code: string) => void;
+  controls: ExamControls;
 }
 
 export function QuestionDisplay({
@@ -36,6 +45,7 @@ export function QuestionDisplay({
   skipQuestion,
   setCurrentIndex,
   saveCodeAnswer,
+  controls,
 }: QuestionDisplayProps) {
   const router = useRouter();
 
@@ -74,6 +84,7 @@ export function QuestionDisplay({
             savedCode={currentAnswer?.code_answer}
             onCodeChange={(code) => saveCodeAnswer(currentQuestion.id, code)}
             examId={examId}
+            controls={controls}
           />
         </>
       ) : (
@@ -134,53 +145,57 @@ export function QuestionDisplay({
       {/* Action buttons */}
       <div className="flex flex-col gap-4 mt-8 pt-6 border-t border-border lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => toggleBookmark(currentQuestion.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-              currentAnswer?.is_bookmarked
-                ? "bg-secondary/15 text-secondary border border-secondary/30"
-                : "bg-card border border-border text-muted-foreground hover:border-border-hover"
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                />
-              </svg>
-              {currentAnswer?.is_bookmarked ? "Bookmarked" : "Bookmark"}
-            </span>
-          </button>
-          <button
-            onClick={() => skipQuestion(currentQuestion.id)}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-card border border-border text-muted-foreground hover:border-border-hover transition-all"
-          >
-            <span className="flex items-center gap-1.5">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                />
-              </svg>
-              Skip
-            </span>
-          </button>
-          {currentAnswer?.selected_option_id && (
+          {controls.bookmarksEnabled && (
+            <button
+              onClick={() => toggleBookmark(currentQuestion.id)}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                currentAnswer?.is_bookmarked
+                  ? "bg-secondary/15 text-secondary border border-secondary/30"
+                  : "bg-card border border-border text-muted-foreground hover:border-border-hover"
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                  />
+                </svg>
+                {currentAnswer?.is_bookmarked ? "Bookmarked" : "Bookmark"}
+              </span>
+            </button>
+          )}
+          {controls.skipEnabled && (
+            <button
+              onClick={() => skipQuestion(currentQuestion.id)}
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-card border border-border text-muted-foreground hover:border-border-hover transition-all"
+            >
+              <span className="flex items-center gap-1.5">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                  />
+                </svg>
+                Skip
+              </span>
+            </button>
+          )}
+          {controls.clearAnswerEnabled && currentAnswer?.selected_option_id && (
             <button
               onClick={() => clearAnswer(currentQuestion.id)}
               className="px-4 py-2 rounded-xl text-sm font-medium bg-danger/10 border border-danger/20 text-danger hover:bg-danger/20 transition-all"
@@ -226,9 +241,7 @@ export function QuestionDisplay({
           ) : (
             <button
               onClick={() =>
-                setCurrentIndex(
-                  Math.min(totalQuestions - 1, currentIndex + 1)
-                )
+                setCurrentIndex(Math.min(totalQuestions - 1, currentIndex + 1))
               }
               className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-secondary text-white hover:scale-[1.02] active:scale-[0.98] transition-all"
             >

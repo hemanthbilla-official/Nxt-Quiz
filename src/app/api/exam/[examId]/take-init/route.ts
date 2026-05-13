@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isLocalEnvironment, resolveUserIdForLocalBypass } from "@/lib/local-user";
-import { sanitizeRunCodeResponse, sanitizeTestCasesForClient } from "@/lib/exam-scoring";
+import { resolveUserIdForLocalBypass } from "@/lib/local-user";
+import {
+  sanitizeRunCodeResponse,
+  sanitizeTestCasesForClient,
+} from "@/lib/exam-scoring";
+import { getExamControls } from "@/lib/exam-controls";
 
 type TakeQuestionRow = {
   position: number;
@@ -11,19 +15,19 @@ type TakeQuestionRow = {
 };
 
 type TakeQuestionDetails = {
-    id: string;
-    topic: string;
-    difficulty: string;
-    question_type: string;
-    question: string;
-    code_snippet: string | null;
-    options: unknown;
-    tags: string[];
-    starter_code: string | null;
-    function_name: string | null;
-    challenge_mode: string | null;
-    test_cases: unknown;
-    language: string | null;
+  id: string;
+  topic: string;
+  difficulty: string;
+  question_type: string;
+  question: string;
+  code_snippet: string | null;
+  options: unknown;
+  tags: string[];
+  starter_code: string | null;
+  function_name: string | null;
+  challenge_mode: string | null;
+  test_cases: unknown;
+  language: string | null;
 };
 
 type ExistingAnswerRow = {
@@ -39,7 +43,7 @@ type ExistingAnswerRow = {
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ examId: string }> }
+  { params }: { params: Promise<{ examId: string }> },
 ) {
   const { examId } = await params;
 
@@ -48,7 +52,6 @@ export async function GET(
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isLocal = isLocalEnvironment();
   const userId = await resolveUserIdForLocalBypass(user?.id);
 
   if (!userId) {
@@ -89,7 +92,8 @@ export async function GET(
 
   const { data: examQuestions } = await admin
     .from("exam_questions")
-    .select(`
+    .select(
+      `
       position,
       points,
       questions (
@@ -107,14 +111,19 @@ export async function GET(
         test_cases,
         language
       )
-    `)
+    `,
+    )
     .eq("exam_id", examId)
     .order("position");
 
   const testCasesByQuestionId = new Map<string, unknown>();
-  const formattedQuestions = ((examQuestions || []) as unknown as TakeQuestionRow[])
+  const formattedQuestions = (
+    (examQuestions || []) as unknown as TakeQuestionRow[]
+  )
     .map((eq) => {
-      const question = Array.isArray(eq.questions) ? eq.questions[0] : eq.questions;
+      const question = Array.isArray(eq.questions)
+        ? eq.questions[0]
+        : eq.questions;
       if (!question) return null;
       testCasesByQuestionId.set(question.id, question.test_cases);
 
@@ -129,10 +138,14 @@ export async function GET(
 
   const { data: existingAnswers } = await admin
     .from("attempt_answers")
-    .select("question_id, selected_option_id, is_bookmarked, is_skipped, code_answer, last_run_results, test_pass_count, test_fail_count")
+    .select(
+      "question_id, selected_option_id, is_bookmarked, is_skipped, code_answer, last_run_results, test_pass_count, test_fail_count",
+    )
     .eq("attempt_id", attempt.id);
 
-  const safeExistingAnswers = ((existingAnswers || []) as ExistingAnswerRow[]).map((answer) => ({
+  const safeExistingAnswers = (
+    (existingAnswers || []) as ExistingAnswerRow[]
+  ).map((answer) => ({
     ...answer,
     last_run_results: answer.last_run_results
       ? sanitizeRunCodeResponse(
@@ -144,18 +157,23 @@ export async function GET(
 
   let serverNow = Date.now();
   try {
-    const { data: serverTimeData, error: rpcError } = await admin.rpc("get_server_time");
+    const { data: serverTimeData, error: rpcError } =
+      await admin.rpc("get_server_time");
     if (!rpcError && serverTimeData) {
       serverNow = new Date(serverTimeData).getTime();
     }
   } catch (err) {
-    console.error("Failed to get server time:", err instanceof Error ? err.message : "Unknown");
+    console.error(
+      "Failed to get server time:",
+      err instanceof Error ? err.message : "Unknown",
+    );
   }
 
   return NextResponse.json({
     attempt,
     questions: formattedQuestions,
     answers: safeExistingAnswers,
+    controls: await getExamControls(admin),
     serverNow,
   });
 }

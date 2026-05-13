@@ -11,16 +11,18 @@ export async function POST(request: Request) {
   const { examCode } = await request.json();
 
   if (!examCode) {
-    return NextResponse.json({ error: "Exam code is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Exam code is required" },
+      { status: 400 },
+    );
   }
 
   const trimmed = examCode.trim().toUpperCase();
   if (trimmed.length < 3 || trimmed.length > 20) {
-    return NextResponse.json({ error: "Invalid exam code length" }, { status: 400 });
-  }
-
-  if (!/^[A-Z0-9]+$/.test(trimmed)) {
-    return NextResponse.json({ error: "Exam code must be alphanumeric" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid exam code length" },
+      { status: 400 },
+    );
   }
 
   const supabase = await createClient();
@@ -30,13 +32,16 @@ export async function POST(request: Request) {
 
   let userId: string | null = user?.id ?? null;
   const isLocal = isLocalEnvironment();
-  
+
   if (!userId && isLocal) {
     userId = await getLocalUserIdFromCookie();
   }
 
   if (!userId) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    );
   }
 
   const profileClient = isLocal ? createAdminClient() : supabase;
@@ -49,7 +54,7 @@ export async function POST(request: Request) {
   if (!profile?.student_college_id) {
     return NextResponse.json(
       { error: "Please complete onboarding first" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -67,7 +72,10 @@ export async function POST(request: Request) {
     if (error.message.includes("removed from this exam")) {
       return NextResponse.json({ error: error.message }, { status: 403 });
     }
-    if (error.message.includes("join window is closed") || error.message.includes("full capacity")) {
+    if (
+      error.message.includes("join window is closed") ||
+      error.message.includes("full capacity")
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });

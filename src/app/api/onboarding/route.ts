@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   LOCAL_STUDENT_EMAIL,
-  LOCAL_STUDENT_ID,
   assertLocalSupabase,
   findOrCreateLocalAuthUser,
   setLocalUserCookie,

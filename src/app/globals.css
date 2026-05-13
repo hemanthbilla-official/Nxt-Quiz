@@ -90,10 +90,6 @@ button:disabled {
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
-.dark .text-muted {
-  color: var(--foreground);
-}
-
 .dark .text-muted-foreground {
   color: var(--muted-foreground);
 }

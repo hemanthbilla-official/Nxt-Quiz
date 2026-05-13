@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getExamControls } from "@/lib/exam-controls";
 import { resolveUserIdForLocalBypass } from "@/lib/local-user";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
@@ -25,6 +26,11 @@ export async function POST(
   }
 
   const admin = createAdminClient();
+  const controls = await getExamControls(admin);
+
+  if (!controls.proctoringEnabled) {
+    return NextResponse.json({ success: true, count: 0, disabled: true });
+  }
 
   const { data: attempt } = await admin
     .from("attempts")
@@ -37,7 +43,7 @@ export async function POST(
   if (!attempt) {
     return NextResponse.json(
       { error: "Active attempt not found for this user/exam" },
-      { status: 404 }
+      { status: 404 },
     );
   }
 
@@ -46,7 +52,10 @@ export async function POST(
   });
 
   if (rpcError) {
-    console.warn("RPC increment_tab_switch failed, using fallback:", rpcError.message);
+    console.warn(
+      "RPC increment_tab_switch failed, using fallback:",
+      rpcError.message,
+    );
     try {
       const { data: currentAttempt } = await admin
         .from("attempts")
@@ -61,10 +70,21 @@ export async function POST(
         .update({ tab_switch_count: newCount })
         .eq("id", attempt.id);
 
-      return NextResponse.json({ success: true, count: newCount, fallback: true });
+      return NextResponse.json({
+        success: true,
+        count: newCount,
+        fallback: true,
+      });
     } catch (fallbackErr) {
-      console.error("Fallback increment failed:", fallbackErr instanceof Error ? fallbackErr.message : "Unknown");
-      return NextResponse.json({ success: true, count: 0, error: "Proctoring log failed" });
+      console.error(
+        "Fallback increment failed:",
+        fallbackErr instanceof Error ? fallbackErr.message : "Unknown",
+      );
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        error: "Proctoring log failed",
+      });
     }
   }
 

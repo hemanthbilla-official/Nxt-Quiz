@@ -96,9 +96,9 @@ export default function LiveMonitor() {
             Real-time status of all active and waiting exams
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-xs font-bold animate-pulse">
-          <span className="w-2 h-2 rounded-full bg-success" />
-          LIVE UPDATING
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-xs font-bold">
+          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+          Auto-refreshing
         </div>
       </div>
 

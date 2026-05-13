@@ -67,7 +67,11 @@ export default function CodeEditor({
     const languageExtension =
       language === "css" ? css() : javascript({ jsx: true });
 
-    return [languageExtension, errorLineExtension(errorLine)];
+    return [
+      languageExtension,
+      EditorView.lineWrapping,
+      errorLineExtension(errorLine),
+    ];
   }, [errorLine, language]);
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Babel from "@babel/standalone";
 import type {
   ConsoleEntry,
@@ -80,6 +80,27 @@ function createBlankDocument() {
 </html>`;
 }
 
+function createLoadingDocument() {
+  return `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #f7f8fb;
+        color: #697586;
+        font: 14px Inter, system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>Rendering preview...</body>
+</html>`;
+}
+
 function createErrorDocument(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
 
@@ -100,6 +121,18 @@ function createErrorDocument(error: unknown) {
   </head>
   <body>${escapeHtml(message)}</body>
 </html>`;
+}
+
+function isLocalPreviewEnvironment() {
+  if (process.env.NEXT_PUBLIC_ENVIRONMENT === "local") {
+    return true;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 }
 
 function compileJavaScript(file: EditorFile) {
@@ -525,11 +558,73 @@ export default function LivePreview({
   onStatusChange,
 }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const preview = useMemo(() => compilePreview(files), [files]);
+  const shouldUseServerPreview = isLocalPreviewEnvironment();
+  const clientPreview = useMemo(() => compilePreview(files), [files]);
+  const [serverPreview, setServerPreview] = useState<CompileResult | null>(null);
+  const preview =
+    shouldUseServerPreview
+      ? serverPreview ?? {
+          srcDoc: createLoadingDocument(),
+          payload: { status: "running" as const },
+        }
+      : clientPreview;
 
   useEffect(() => {
-    onStatusChange(preview.payload);
-  }, [onStatusChange, preview.payload]);
+    if (!shouldUseServerPreview) {
+      onStatusChange(clientPreview.payload);
+    }
+  }, [clientPreview.payload, onStatusChange, shouldUseServerPreview]);
+
+  useEffect(() => {
+    if (!shouldUseServerPreview) {
+      return;
+    }
+
+    let cancelled = false;
+    onStatusChange({ status: "running" });
+
+    fetch("/api/code-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ files }),
+    })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => ({}))) as {
+          srcDoc?: string;
+          error?: string;
+        };
+
+        if (!res.ok || typeof data.srcDoc !== "string") {
+          throw new Error(data.error || "Failed to render preview");
+        }
+
+        return data.srcDoc;
+      })
+      .then((srcDoc) => {
+        if (cancelled) return;
+
+        const nextPreview: CompileResult = {
+          srcDoc,
+          payload: { status: "ready" },
+        };
+        setServerPreview(nextPreview);
+        onStatusChange(nextPreview.payload);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        const nextPreview: CompileResult = {
+          srcDoc: createErrorDocument(error),
+          payload: getErrorPayload(error),
+        };
+        setServerPreview(nextPreview);
+        onStatusChange(nextPreview.payload);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [files, onStatusChange, shouldUseServerPreview]);
 
   useEffect(() => {
     function handleMessage(event: MessageEvent<PreviewMessage>) {

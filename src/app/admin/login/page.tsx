@@ -34,7 +34,7 @@ export default function AdminLogin() {
       <FloatingThemeToggle />
       <div className="w-full max-w-sm animate-slide-up">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-danger to-warning mb-4 glow-danger">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary mb-4 glow-primary">
             <svg
               className="w-7 h-7 text-white"
               fill="none"
@@ -83,7 +83,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-danger to-warning text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
