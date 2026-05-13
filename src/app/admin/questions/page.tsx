@@ -57,22 +57,75 @@ export default function QuestionBank() {
   const handleDownloadTemplate = () => {
     const template = [
       {
-        id: "unique-id-1",
-        topic: "React Hooks",
+        id: "q-1-theory",
+        topic: "React Basics",
         difficulty: "Basic",
         questionType: "theory",
-        question: "What does useState return?",
+        question: "Which hook is used to manage side effects in React?",
         options: [
-          { id: "A", text: "A single value" },
-          { id: "B", text: "An array with two items" },
-          { id: "C", text: "An object with state and setter" },
-          { id: "D", text: "A function only" },
+          { id: "A", text: "useState" },
+          { id: "B", text: "useEffect" },
+          { id: "C", text: "useContext" },
+          { id: "D", text: "useReducer" },
         ],
         correctOptionId: "B",
-        explanation:
-          "useState returns an array containing the current state and a function to update it.",
-        tags: ["hooks", "basics"],
+        explanation: "useEffect is designed to handle side effects in functional components.",
+        tags: ["react", "hooks"],
+        points: 1
       },
+      {
+        id: "q-2-code-output",
+        topic: "JavaScript Scopes",
+        difficulty: "Intermediate",
+        questionType: "code-output",
+        question: "What is the output of the following code snippet?",
+        codeSnippet: "let x = 1;\nif (true) {\n  let x = 2;\n}\nconsole.log(x);",
+        options: [
+          { id: "A", text: "1" },
+          { id: "B", text: "2" },
+          { id: "C", "text": "undefined" },
+          { id: "D", "text": "ReferenceError" },
+        ],
+        correctOptionId: "A",
+        explanation: "let is block-scoped, so the x inside the if block does not affect the outer x.",
+        tags: ["javascript", "scope"],
+        points: 2
+      },
+      {
+        id: "q-3-prog-func",
+        topic: "JavaScript Algorithms",
+        difficulty: "Intermediate",
+        questionType: "programming",
+        question: "Write a function `sumArray` that returns the sum of all numbers in an array.",
+        challengeMode: "function",
+        language: "javascript",
+        functionName: "sumArray",
+        starterCode: "function sumArray(arr) {\n  // Your code here\n  return 0;\n}",
+        testCases: [
+          { inputs: [[1, 2, 3]], expected: 6 },
+          { inputs: [[-1, 5, 2]], expected: 6 },
+          { inputs: [[]], expected: 0 }
+        ],
+        tags: ["algorithms", "arrays"],
+        points: 5
+      },
+      {
+        id: "q-4-prog-react",
+        topic: "React Components",
+        difficulty: "Advanced",
+        questionType: "programming",
+        question: "Create a React component named `Greeting` that accepts a `name` prop and renders an `<h1>` containing 'Hello, {name}!'.",
+        challengeMode: "component",
+        language: "javascript",
+        functionName: "Greeting",
+        starterCode: "import React from 'react';\n\nexport default function Greeting({ name }) {\n  return (\n    <div>\n      {/* Your code here */}\n    </div>\n  );\n}",
+        testCases: [
+          { inputs: [{ name: "Alice" }], expected: "Hello, Alice!" },
+          { inputs: [{ name: "Bob" }], expected: "Hello, Bob!" }
+        ],
+        tags: ["react", "components", "jsx"],
+        points: 10
+      }
     ];
 
     const blob = new Blob([JSON.stringify(template, null, 2)], {
@@ -81,7 +134,7 @@ export default function QuestionBank() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "quiz_template.json";
+    a.download = "quiz_template_detailed.json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -252,19 +305,15 @@ export default function QuestionBank() {
 
   const groupedQuestions = filtered.reduce(
     (acc, q) => {
-      if (!q.exam_questions || q.exam_questions.length === 0) {
-        const label = "Unassigned / Global Pool";
-        if (!acc[label]) acc[label] = [];
-        acc[label].push(q);
-      } else {
+      if (q.exam_questions && q.exam_questions.length > 0) {
         q.exam_questions.forEach((eq) => {
           const parentExam = eq.exams;
-          const label = parentExam
-            ? `${parentExam.title} (${parentExam.exam_code})`
-            : "Unassigned / Global Pool";
-          if (!acc[label]) acc[label] = [];
-          if (!acc[label].find((existing) => existing.id === q.id)) {
-            acc[label].push(q);
+          if (parentExam) {
+            const label = `${parentExam.title} (${parentExam.exam_code})`;
+            if (!acc[label]) acc[label] = [];
+            if (!acc[label].find((existing) => existing.id === q.id)) {
+              acc[label].push(q);
+            }
           }
         });
       }
