@@ -32,33 +32,18 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <FloatingThemeToggle />
-      <div className="w-full max-w-sm animate-slide-up">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary mb-4 glow-primary">
-            <svg
-              className="w-7 h-7 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-              />
-            </svg>
-          </div>
           <h1 className="text-2xl font-bold text-foreground">Admin Portal</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Enter the admin password to continue
           </p>
         </div>
 
-        <div className="glass-card p-8">
+        <div className="card p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
+              <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
                 {error}
               </div>
             )}
@@ -75,7 +60,7 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
-                className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
+                className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors duration-150"
                 autoFocus
                 required
               />
@@ -83,7 +68,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+              className="w-full py-3 rounded bg-primary text-white font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -100,7 +85,7 @@ export default function AdminLogin() {
         <div className="mt-6 text-center">
           <a
             href="/login"
-            className="text-xs text-muted hover:text-primary transition-colors"
+            className="text-xs text-muted hover:text-primary transition-colors duration-150"
           >
             ← Back to Student Login
           </a>

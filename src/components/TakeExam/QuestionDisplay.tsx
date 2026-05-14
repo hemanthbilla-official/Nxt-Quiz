@@ -55,7 +55,6 @@ export function QuestionDisplay({
   const [leftWidth, setLeftWidth] = useState(500);
   const [isResizing, setIsResizing] = useState(false);
 
-  // Draggable Split Logic
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizing(true);
@@ -83,30 +82,24 @@ export function QuestionDisplay({
     <div
       className={`${
         isProgrammingQuestion ? "max-w-full px-2" : "max-w-3xl mx-auto"
-      } animate-fade-in`}
+      }`}
       key={currentIndex}
     >
       {isProgrammingQuestion ? (
-        /* Unified 2-Column Resizable Split Layout */
         <div 
-          className={`flex flex-col lg:flex-row gap-0 h-[calc(100vh-8rem)] min-h-[650px] relative border border-border rounded-xl shadow-sm overflow-hidden bg-card ${isResizing ? "cursor-col-resize select-none" : ""}`}
+          className={`flex flex-col lg:flex-row gap-0 h-[calc(100vh-8rem)] min-h-[650px] relative border border-border rounded overflow-hidden bg-card ${isResizing ? "cursor-col-resize select-none" : ""}`}
         >
-          {/* Left Column: Problem Description */}
           <div 
             style={{ width: `${leftWidth}px` }}
             className="flex-shrink-0 flex flex-col bg-card border-r border-border overflow-hidden"
           >
-            <div className="px-5 py-3 border-b border-border bg-muted/10 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
-                  Problem Description
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
-                  {currentQuestion.topic}
-                </span>
-              </div>
+            <div className="px-4 py-3 border-b border-border bg-card-hover flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                Problem Description
+              </span>
+              <span className="px-2 py-0.5 rounded bg-muted/20 text-muted-foreground text-[10px] font-bold uppercase tracking-wider">
+                {currentQuestion.topic}
+              </span>
             </div>
             
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar scroll-smooth">
@@ -117,7 +110,7 @@ export function QuestionDisplay({
                   <div className="mb-4 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                     Reference Instructions
                   </div>
-                  <div className="p-5 rounded-xl border border-border bg-muted/20 text-sm leading-relaxed text-foreground/80 font-medium">
+                  <div className="p-4 rounded border border-border bg-card-hover text-sm leading-relaxed text-foreground/80 font-medium">
                     {currentQuestion.codeSnippet}
                   </div>
                 </div>
@@ -125,16 +118,14 @@ export function QuestionDisplay({
             </div>
           </div>
 
-          {/* Resize Handle Divider */}
           <div
             onMouseDown={handleMouseDown}
-            className={`hidden lg:flex w-1.5 z-10 group cursor-col-resize items-center justify-center transition-colors hover:bg-primary/20 ${isResizing ? "bg-primary/30" : "bg-muted/5"}`}
+            className={`hidden lg:flex w-1.5 z-10 cursor-col-resize items-center justify-center transition-colors duration-150 hover:bg-primary/20 ${isResizing ? "bg-primary/30" : "bg-card-hover"}`}
             title="Drag to resize"
           >
-            <div className={`w-[1px] h-full transition-colors ${isResizing ? "bg-primary" : "bg-transparent group-hover:bg-primary/50"}`} />
+            <div className={`w-[1px] h-full transition-colors duration-150 ${isResizing ? "bg-primary" : "bg-transparent"}`} />
           </div>
 
-          {/* Right Column: Code Editor */}
           <div className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
             <ProgrammingQuestion
               className="pe-connected"
@@ -150,7 +141,6 @@ export function QuestionDisplay({
           </div>
         </div>
       ) : (
-        /* Standard Layout for MCQs */
         <>
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
@@ -164,18 +154,16 @@ export function QuestionDisplay({
 
           {currentQuestion.codeSnippet && (
             <div className="mb-8">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Reference Code
-                </span>
-              </div>
-              <pre className="code-block p-4 rounded-xl border border-border bg-muted/30 overflow-x-auto">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Reference Code
+              </span>
+              <pre className="code-block mt-2 overflow-x-auto">
                 <code className="text-sm font-mono">{currentQuestion.codeSnippet}</code>
               </pre>
             </div>
           )}
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {currentQuestion.options.map((option) => {
               const isSelected =
                 currentAnswer?.selected_option_id === option.id;
@@ -183,17 +171,17 @@ export function QuestionDisplay({
                 <button
                   key={option.id}
                   onClick={() => selectOption(currentQuestion.id, option.id)}
-                  className={`w-full text-left p-4 rounded-xl border-2 transition-all duration-200 hover:scale-[1.01] ${
+                  className={`w-full text-left p-4 rounded border-2 transition-colors duration-150 ${
                     isSelected
-                      ? "border-primary bg-primary/10 text-foreground shadow-sm"
-                      : "border-border bg-card hover:border-border-hover hover:bg-card-hover text-muted-foreground"
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border bg-card hover:border-border-hover text-muted-foreground"
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     <span
-                      className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center font-semibold text-sm ${
+                      className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-semibold text-sm ${
                         isSelected
-                          ? "bg-primary text-white shadow-md shadow-primary/20"
+                          ? "bg-primary text-white"
                           : "bg-border/50 text-muted-foreground"
                       }`}
                     >
@@ -210,15 +198,15 @@ export function QuestionDisplay({
         </>
       )}
 
-      {/* Common Action buttons */}
+      {/* Action buttons */}
       <div className={`flex flex-col gap-4 mt-8 pt-6 border-t border-border lg:flex-row lg:items-center lg:justify-between ${isProgrammingQuestion ? "max-w-full" : ""}`}>
         <div className="flex flex-wrap items-center gap-3">
           {controls.bookmarksEnabled && (
             <button
               onClick={() => toggleBookmark(currentQuestion.id)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded text-sm font-medium transition-colors duration-150 ${
                 currentAnswer?.is_bookmarked
-                  ? "bg-secondary/15 text-secondary border border-secondary/30"
+                  ? "bg-primary/15 text-primary border border-primary/30"
                   : "bg-card border border-border text-muted-foreground hover:border-border-hover"
               }`}
             >
@@ -243,7 +231,7 @@ export function QuestionDisplay({
           {controls.skipEnabled && (
             <button
               onClick={() => skipQuestion(currentQuestion.id)}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-card border border-border text-muted-foreground hover:border-border-hover transition-all"
+              className="px-4 py-2 rounded text-sm font-medium bg-card border border-border text-muted-foreground hover:border-border-hover transition-colors duration-150"
             >
               <span className="flex items-center gap-1.5">
                 <svg
@@ -266,7 +254,7 @@ export function QuestionDisplay({
           {controls.clearAnswerEnabled && currentAnswer?.selected_option_id && (
             <button
               onClick={() => clearAnswer(currentQuestion.id)}
-              className="px-4 py-2 rounded-xl text-sm font-medium bg-danger/10 border border-danger/20 text-danger hover:bg-danger/20 transition-all"
+              className="px-4 py-2 rounded text-sm font-medium bg-danger/10 border border-danger/20 text-danger hover:bg-danger/20 transition-colors duration-150"
             >
               <span className="flex items-center gap-1.5">
                 <svg
@@ -292,7 +280,7 @@ export function QuestionDisplay({
           <button
             onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
             disabled={currentIndex === 0}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium bg-card border border-border text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-card-hover transition-all"
+            className="px-5 py-2.5 rounded text-sm font-medium bg-card border border-border text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-card-hover transition-colors duration-150"
           >
             ← Previous
           </button>
@@ -302,16 +290,16 @@ export function QuestionDisplay({
                 markExamNavigationIntent();
                 router.push(`/exam/${examId}/review`);
               }}
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-secondary text-white hover:scale-[1.02] active:scale-[0.98] transition-all glow-primary shadow-lg shadow-primary/25"
+              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors duration-150"
             >
-              Review & Submit →
+              Review &amp; Submit →
             </button>
           ) : (
             <button
               onClick={() =>
                 setCurrentIndex(Math.min(totalQuestions - 1, currentIndex + 1))
               }
-              className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-secondary text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors duration-150"
             >
               Next →
             </button>

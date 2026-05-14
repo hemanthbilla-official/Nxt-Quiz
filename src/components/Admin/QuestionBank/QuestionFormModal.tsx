@@ -28,7 +28,7 @@ export function QuestionFormModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
       <div
-        className="glass-card p-6 sm:p-8 w-full max-w-2xl my-8 animate-slide-up"
+        className="card p-6 sm:p-8 w-full max-w-2xl my-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="question-form-title"
@@ -49,7 +49,7 @@ export function QuestionFormModal({
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, topic: e.target.value }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
                 required
               />
             </div>
@@ -66,7 +66,7 @@ export function QuestionFormModal({
                     difficulty: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
               >
                 <option value="Basic">Basic</option>
                 <option value="Intermediate">Intermediate</option>
@@ -88,7 +88,7 @@ export function QuestionFormModal({
                     question_type: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
               >
                 <option value="theory">Theory (MCQ)</option>
                 <option value="code-output">Code Output (MCQ)</option>
@@ -107,7 +107,7 @@ export function QuestionFormModal({
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, points: parseInt(e.target.value) || 1 }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
               />
             </div>
           </div>
@@ -126,7 +126,7 @@ export function QuestionFormModal({
                     code_snippet: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
                 placeholder="Enter React/JSX code here..."
               />
             </div>
@@ -142,7 +142,7 @@ export function QuestionFormModal({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, question: e.target.value }))
               }
-              className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[100px]"
+              className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[100px]"
               placeholder={
                 form.question_type === "programming"
                   ? "Describe the programming task..."
@@ -166,7 +166,7 @@ export function QuestionFormModal({
                     onChange={(e) =>
                         setForm((prev) => ({ ...prev, challenge_mode: e.target.value as ChallengeMode }))
                     }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                    className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
                   >
                     <option value="function">JavaScript Function</option>
                     <option value="component">React Component</option>
@@ -183,7 +183,7 @@ export function QuestionFormModal({
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, function_name: e.target.value }))
                     }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all font-mono"
+                    className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all font-mono"
                     placeholder="e.g. add, fibonacci"
                     required
                   />
@@ -199,7 +199,7 @@ export function QuestionFormModal({
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, starter_code: e.target.value }))
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
+                  className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
                   placeholder={`function ${form.function_name || "solution"}(a, b) {\n  // Write your code here\n}`}
                   required
                 />
@@ -230,7 +230,7 @@ export function QuestionFormModal({
                   {(form.test_cases || []).map((tc: TestCase, idx: number) => (
                     <div
                       key={tc.id}
-                      className="p-3 rounded-xl bg-background border border-border space-y-2"
+                      className="p-3 rounded bg-background border border-border space-y-2"
                     >
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-muted-foreground">
@@ -356,7 +356,7 @@ export function QuestionFormModal({
                         newOpts[idx].text = e.target.value;
                         setForm((prev) => ({ ...prev, options: newOpts }));
                       }}
-                      className="flex-1 px-4 py-2 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all text-sm"
+                      className="flex-1 px-4 py-2 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all text-sm"
                       placeholder={`Option ${opt.id}...`}
                       required
                     />
@@ -389,7 +389,7 @@ export function QuestionFormModal({
                       explanation: e.target.value,
                     }))
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[80px]"
+                  className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[80px]"
                   required
                 />
               </div>
@@ -400,7 +400,7 @@ export function QuestionFormModal({
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-3 rounded-xl bg-primary text-white font-semibold hover:bg-primary-hover active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <div className="flex items-center justify-center gap-2">
@@ -416,7 +416,7 @@ export function QuestionFormModal({
             <button
               type="button"
               onClick={() => setShowAdd(false)}
-              className="px-6 py-3 rounded-xl bg-card border border-border text-foreground hover:bg-card-hover active:scale-[0.98] transition-all"
+              className="px-6 py-3 rounded bg-card border border-border text-foreground hover:bg-card-hover transition-all"
             >
               Cancel
             </button>

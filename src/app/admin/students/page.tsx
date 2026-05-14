@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { Search, X, Edit2, Trash2, Users } from "lucide-react";
 
 interface ParticipantInfo {
   status: string;
@@ -26,98 +27,105 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "onboarded" | "pending">("all");
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
-
-  // Edit State
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [editForm, setEditForm] = useState({ full_name: "", student_college_id: "" });
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: "", student_college_id: "" });
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Student; direction: "asc" | "desc" } | null>({ key: "full_name", direction: "asc" });
+  const [selectedRowIndex, setSelectedRowIndex] = useState(-1);
+  const [inlineEditingId, setInlineEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleSort = (key: keyof Student) => {
+    setSortConfig((prev) => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
 
   const fetchStudents = useCallback(async () => {
-    const res = await fetch("/api/admin/students");
-    if (res.ok) {
-      const data = await res.json();
-      setStudents(data.students || []);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/students");
+      if (res.ok) {
+        const data = await res.json();
+        setStudents(data.students || []);
+      }
+    } catch (err) {
+      showToast("Failed to load students", "error");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStudents();
   }, [fetchStudents]);
 
-  const handleDeleteAll = async () => {
-    const confirmText = prompt('This will PERMANENTLY delete ALL students, their results, and their accounts. This action is IRREVERSIBLE. Type "DELETE ALL" to confirm:');
-    if (confirmText !== "DELETE ALL") return;
-
-    setIsDeletingAll(true);
-    const res = await fetch("/api/admin/students", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deleteAll: true, confirmation: "DELETE ALL STUDENTS" }),
-    });
-    if (res.ok) {
-      setStudents([]);
-    }
-    setIsDeletingAll(false);
-  };
-
-  const handleDelete = async (userId: string, name: string) => {
-    if (!confirm(`Permanently delete student "${name}"? This will remove all their exam data, attempts, and account. This cannot be undone.`)) return;
+  const handleDelete = async (userId: string) => {
     setDeletingId(userId);
-    const res = await fetch("/api/admin/students", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    if (res.ok) {
-      setStudents((prev) => prev.filter((s) => s.id !== userId));
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+      if (res.ok) {
+        setStudents((prev) => prev.filter((s) => s.id !== userId));
+        showToast("Student deleted successfully");
+      } else {
+        showToast("Failed to delete student", "error");
+      }
+    } catch (err) {
+      showToast("An error occurred", "error");
+    } finally {
+      setDeletingId(null);
+      setDeleteConfirmId(null);
     }
-    setDeletingId(null);
   };
 
-  const handleEditClick = (student: Student) => {
-    setEditingStudent(student);
-    setEditForm({
-      full_name: student.full_name || "",
-      student_college_id: student.student_college_id || "",
-    });
-  };
-
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingStudent) return;
-    
+  const handleSaveInlineEdit = async (studentId: string) => {
     setIsSaving(true);
-    const res = await fetch("/api/admin/students", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        userId: editingStudent.id,
-        full_name: editForm.full_name,
-        student_college_id: editForm.student_college_id,
-      }),
-    });
+    try {
+      const res = await fetch("/api/admin/students", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: studentId,
+          full_name: editForm.full_name,
+          student_college_id: editForm.student_college_id,
+        }),
+      });
 
-    if (res.ok) {
-      setStudents((prev) =>
-        prev.map((s) =>
-          s.id === editingStudent.id
-            ? { ...s, full_name: editForm.full_name, student_college_id: editForm.student_college_id }
-            : s
-        )
-      );
-      setEditingStudent(null);
-    } else {
-      alert("Failed to update student details.");
+      if (res.ok) {
+        setStudents((prev) =>
+          prev.map((s) =>
+            s.id === studentId
+              ? { ...s, full_name: editForm.full_name, student_college_id: editForm.student_college_id }
+              : s
+          )
+        );
+        setInlineEditingId(null);
+        showToast("Student updated");
+      } else {
+        showToast("Failed to update student", "error");
+      }
+    } catch (err) {
+      showToast("An error occurred", "error");
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const filtered = useMemo(() => {
-    return students.filter((s) => {
+    let result = students.filter((s) => {
       const q = search.toLowerCase();
       const matchesSearch =
         (s.full_name || "").toLowerCase().includes(q) ||
@@ -125,116 +133,255 @@ export default function StudentsPage() {
         (s.student_college_id || "").toLowerCase().includes(q);
 
       if (!matchesSearch) return false;
-
       if (statusFilter === "onboarded") return !!s.onboarded_at;
       if (statusFilter === "pending") return !s.onboarded_at;
-
       return true;
     });
-  }, [students, search, statusFilter]);
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const aVal = a[sortConfig.key] || "";
+        const bVal = b[sortConfig.key] || "";
+        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [students, search, statusFilter, sortConfig]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (inlineEditingId) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedRowIndex(prev => Math.min(prev + 1, filtered.length - 1));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedRowIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === "Enter" && selectedRowIndex !== -1) {
+        const student = filtered[selectedRowIndex];
+        setInlineEditingId(student.id);
+        setEditForm({ full_name: student.full_name || "", student_college_id: student.student_college_id || "" });
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filtered, inlineEditingId, selectedRowIndex]);
 
   if (loading) {
     return (
-      <div className="screen-loader">
-        <div className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="spinner h-8 w-8" />
       </div>
     );
   }
 
+  const activeFiltersCount = (search ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Students</h1>
-          <p className="text-sm text-muted-foreground mt-1">{students.length} registered students</p>
+    <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[100] px-4 py-2 rounded-md shadow-lg border animate-fade-in ${
+          toast.type === "success" ? "bg-success/10 border-success text-success" : "bg-danger/10 border-danger text-danger"
+        }`}>
+          {toast.message}
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Students</h1>
+          <p className="text-sm text-muted-foreground">Manage and monitor registered students</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative group max-w-xs w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              type="text"
+              placeholder="Filter students..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+            />
+          </div>
+          
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "onboarded" | "pending")}
-            className="px-4 py-2.5 rounded-xl bg-background border border-border text-sm focus:outline-none focus:border-primary transition-all shadow-sm"
+            className="h-10 px-3 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
           >
-            <option value="all">All Statuses</option>
+            <option value="all">All Status</option>
             <option value="onboarded">Onboarded</option>
             <option value="pending">Pending</option>
           </select>
-          <div className="relative w-full sm:w-auto">
-            <svg className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input
-              type="text"
-              placeholder="Search by name, email, or ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2.5 rounded-xl bg-background border border-border text-foreground placeholder:text-muted text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 w-full sm:w-72"
-            />
-          </div>
+
+          {activeFiltersCount > 0 && (
+            <button 
+              onClick={() => { setSearch(""); setStatusFilter("all"); }}
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      {/* Filter Chips */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {search && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/20 rounded-full text-xs font-medium text-primary">
+              <span>Search: {search}</span>
+              <button onClick={() => setSearch("")}><X className="w-3 h-3" /></button>
+            </div>
+          )}
+          {statusFilter !== "all" && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/5 border border-primary/20 rounded-full text-xs font-medium text-primary">
+              <span>Status: {statusFilter}</span>
+              <button onClick={() => setStatusFilter("all")}><X className="w-3 h-3" /></button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="card">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
-                <th className="text-left p-4 text-muted-foreground font-medium">Name</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">College ID</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">Email</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">Status</th>
-                <th className="text-left p-4 text-muted-foreground font-medium">Activity</th>
-                <th className="text-right p-4 text-muted-foreground font-medium">Actions</th>
+              <tr className="border-b border-border bg-card-hover/50 sticky top-0 z-10">
+                <th 
+                  className="p-4 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors group"
+                  onClick={() => handleSort("full_name")}
+                >
+                  <div className="flex items-center gap-1">
+                    Name
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {sortConfig?.key === "full_name" ? (sortConfig.direction === "asc" ? "↑" : "↓") : "↕"}
+                    </span>
+                  </div>
+                </th>
+                <th 
+                  className="p-4 text-left font-medium text-muted-foreground cursor-pointer hover:text-foreground transition-colors group"
+                  onClick={() => handleSort("student_college_id")}
+                >
+                  <div className="flex items-center gap-1">
+                    College ID
+                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      {sortConfig?.key === "student_college_id" ? (sortConfig.direction === "asc" ? "↑" : "↓") : "↕"}
+                    </span>
+                  </div>
+                </th>
+                <th className="p-4 text-left font-medium text-muted-foreground">Email</th>
+                <th className="p-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="p-4 text-right font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((s) => {
-                const activeExam = s.exam_participants?.find(p => p.status === "active");
+              {filtered.map((s, idx) => {
+                const isEditing = inlineEditingId === s.id;
+                const isSelected = selectedRowIndex === idx;
+                const isConfirmingDelete = deleteConfirmId === s.id;
+
                 return (
-                  <tr key={s.id} className="border-b border-border/50 hover:bg-card-hover transition-colors">
-                    <td className="p-4 text-foreground font-medium">{s.full_name || "—"}</td>
-                    <td className="p-4 font-mono text-accent text-xs">{s.student_college_id || "—"}</td>
-                    <td className="p-4 text-muted-foreground text-xs">{s.email || "—"}</td>
+                  <tr 
+                    key={s.id} 
+                    className={`border-b border-border/50 transition-colors ${
+                      isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : "hover:bg-card-hover"
+                    }`}
+                    onClick={() => setSelectedRowIndex(idx)}
+                  >
                     <td className="p-4">
-                      <span className={`text-[10px] px-2 py-1 rounded-lg uppercase font-bold tracking-wider ${s.onboarded_at ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
+                      {isEditing ? (
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editForm.full_name}
+                          onChange={e => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
+                          className="w-full h-8 px-2 bg-background border border-primary rounded text-sm outline-none"
+                        />
+                      ) : (
+                        <span className="font-medium text-foreground">{s.full_name || "—"}</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editForm.student_college_id}
+                          onChange={e => setEditForm(prev => ({ ...prev, student_college_id: e.target.value.toUpperCase() }))}
+                          className="w-full h-8 px-2 bg-background border border-primary rounded text-sm outline-none font-mono"
+                        />
+                      ) : (
+                        <span className="font-mono text-xs text-muted-foreground">{s.student_college_id || "—"}</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-muted-foreground">{s.email}</td>
+                    <td className="p-4">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                        s.onboarded_at ? "bg-success/10 text-success border border-success/20" : "bg-warning/10 text-warning border border-warning/20"
+                      }`}>
                         {s.onboarded_at ? "Onboarded" : "Pending"}
                       </span>
                     </td>
-                    <td className="p-4">
-                      {activeExam ? (
-                        <div className="flex items-center gap-2">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                          </span>
-                          <span className="text-[10px] font-bold text-primary truncate max-w-[120px]" title={activeExam.exams.title}>
-                            {activeExam.exams.title}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Idle</span>
-                      )}
-                    </td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEditClick(s)}
-                          className="px-3 py-1 rounded-lg text-xs font-medium text-warning hover:bg-warning/10 transition-all"
-                        >
-                          Edit
-                        </button>
-                        <Link
-                          href={`/admin/students/${s.id}`}
-                          className="px-3 py-1 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-all"
-                        >
-                          View
-                        </Link>
-                        {deletingId === s.id ? (
-                          <div className="spinner inline-block" style={{ width: 16, height: 16 }} />
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => handleSaveInlineEdit(s.id)}
+                              disabled={isSaving}
+                              className="text-xs font-bold text-success hover:underline disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setInlineEditingId(null)}
+                              className="text-xs font-bold text-muted-foreground hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : isConfirmingDelete ? (
+                          <div className="flex items-center gap-2 animate-fade-in">
+                            <span className="text-[10px] font-bold text-danger uppercase">Confirm?</span>
+                            <button
+                              onClick={() => handleDelete(s.id)}
+                              className="px-2 py-1 bg-danger text-white rounded text-[10px] font-bold"
+                            >
+                              Delete
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-2 py-1 bg-muted rounded text-[10px] font-bold"
+                            >
+                              No
+                            </button>
+                          </div>
                         ) : (
-                          <button
-                            onClick={() => handleDelete(s.id, s.full_name || s.email)}
-                            className="px-3 py-1 rounded-lg text-xs font-medium text-danger hover:bg-danger/10 transition-all"
-                          >
-                            Delete
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setInlineEditingId(s.id);
+                                setEditForm({ full_name: s.full_name || "", student_college_id: s.student_college_id || "" });
+                              }}
+                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                              aria-label="Edit student"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(s.id)}
+                              className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-md transition-colors"
+                              aria-label="Delete student"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -243,8 +390,26 @@ export default function StudentsPage() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                    {search ? "No students match your search" : "No students registered yet"}
+                  <td colSpan={5} className="p-12 text-center">
+                    <div className="max-w-xs mx-auto">
+                      <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Users className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-sm font-bold">
+                        {search ? `No results for "${search}"` : "No students found"}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {search ? "Try adjusting your search terms or filters." : "Students will appear here once they register."}
+                      </p>
+                      {activeFiltersCount > 0 && (
+                        <button
+                          onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                          className="mt-4 text-xs font-bold text-primary hover:underline"
+                        >
+                          Reset all filters
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -252,97 +417,6 @@ export default function StudentsPage() {
           </table>
         </div>
       </div>
-
-      {/* Danger Zone */}
-      {students.length > 0 && (
-        <div className="mt-8 p-6 rounded-2xl border border-danger/20 bg-danger/5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-bold text-danger">Danger Zone</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Permanently delete all students, their results, and accounts. This cannot be undone.
-              </p>
-            </div>
-            <button
-              onClick={handleDeleteAll}
-              disabled={isDeletingAll}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold text-danger hover:bg-danger/10 border border-danger/30 transition-all flex items-center gap-2 flex-shrink-0"
-            >
-              {isDeletingAll ? (
-                <>
-                  <div className="spinner" style={{ width: 12, height: 12 }} />
-                  Deleting All...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  Delete All Students
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {editingStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="glass-card p-8 w-full max-w-md animate-slide-up">
-            <h2 className="text-xl font-bold text-foreground mb-6">Edit Student Profile</h2>
-            
-            <div className="mb-6 p-4 rounded-xl bg-background border border-border">
-              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1">Email (Read Only)</p>
-              <p className="text-sm font-mono text-muted">{editingStudent.email}</p>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">Full Name</label>
-                <input
-                  type="text"
-                  value={editForm.full_name}
-                  onChange={e => setEditForm(prev => ({ ...prev, full_name: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">College ID</label>
-                <input
-                  type="text"
-                  value={editForm.student_college_id}
-                  onChange={e => setEditForm(prev => ({ ...prev, student_college_id: e.target.value }))}
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all uppercase font-mono"
-                  required
-                />
-              </div>
-              <div className="flex gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setEditingStudent(null)}
-                  className="flex-1 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="spinner" style={{ width: 14, height: 14, borderTopColor: "white", borderColor: "rgba(255,255,255,0.3)" }} />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

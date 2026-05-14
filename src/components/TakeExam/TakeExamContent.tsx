@@ -435,7 +435,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
   if (loading) {
     return (
       <div className="screen-loader">
-        <div className="screen-loader-content animate-fade-in">
+        <div className="screen-loader-content">
           <div
             className="spinner mx-auto mb-4"
             style={{ width: 40, height: 40 }}
@@ -449,7 +449,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
   if (questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="glass-card p-8 max-w-md w-full text-center">
+        <div className="card p-8 max-w-md w-full text-center">
           <h2 className="text-2xl font-bold text-foreground mb-4">
             No Questions Found
           </h2>
@@ -459,7 +459,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
           </p>
           <button
             onClick={() => router.push("/exam/join")}
-            className="w-full py-3 rounded-xl bg-primary text-white font-semibold"
+            className="w-full py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors duration-150"
           >
             Go Back
           </button>
@@ -483,17 +483,17 @@ export function TakeExamContent({ examId }: { examId: string }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-lg border-b border-border px-4 py-3">
+      <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3">
         <div className="max-w-7xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-foreground">
               Q {currentIndex + 1}/{questions.length}
             </span>
-            <span className="text-xs text-muted-foreground px-2 py-1 rounded-lg bg-border/50">
+            <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-border/50">
               {currentQuestion.topic}
             </span>
             <span
-              className={`text-xs px-2 py-1 rounded-lg ${
+              className={`text-xs px-2 py-0.5 rounded ${
                 currentQuestion.difficulty === "Intermediate"
                   ? "bg-warning/10 text-warning"
                   : "bg-success/10 text-success"
@@ -516,9 +516,9 @@ export function TakeExamContent({ examId }: { examId: string }) {
             </span>
             {timeLeft !== null && (
               <div
-                className={`px-4 py-2 rounded-xl font-mono font-bold text-lg ${
+                className={`px-4 py-2 rounded font-mono font-bold text-lg ${
                   isUrgent
-                    ? "bg-danger/10 text-danger animate-timer-urgent"
+                    ? "bg-danger/10 text-danger"
                     : "bg-primary/10 text-primary"
                 }`}
               >

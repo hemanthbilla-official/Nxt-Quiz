@@ -70,52 +70,46 @@ export default function MyScores() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Top bar */}
-      <header className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-10 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-b border-border bg-card sticky top-0 z-10 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => router.push("/exam/join")}
-            className="p-2 hover:bg-card-hover rounded-lg transition-colors"
+            className="p-2 hover:bg-card-hover rounded transition-colors duration-150"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <span className="text-lg font-bold gradient-text">My Scores</span>
+          <span className="text-lg font-bold text-foreground">My Scores</span>
         </div>
         <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
           <ThemeToggle />
           <span className="text-sm text-muted-foreground hidden sm:inline">{userName}</span>
-          <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+          <div className="w-8 h-8 rounded bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
             {userName[0]}
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6 animate-fade-in">
+      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-foreground mb-2">Performance History</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Performance History</h1>
           <p className="text-muted-foreground text-sm">Review your results from past examinations.</p>
         </div>
 
         {scores.length === 0 ? (
-          <div className="glass-card p-12 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted mb-4">
-              <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
+          <div className="card p-12 text-center">
             <h3 className="text-lg font-semibold text-foreground mb-1">No scores yet</h3>
             <p className="text-muted-foreground mb-6">You haven&apos;t completed any exams yet.</p>
             <button
               onClick={() => router.push("/exam/join")}
-              className="px-6 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:opacity-90 transition-all"
+              className="px-6 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors duration-150"
             >
               Join an Exam
             </button>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-2">
             {scores.map((record, idx) => {
               const percentage = record.max_score ? Math.round((record.total_score / record.max_score) * 100) : 0;
               const isExcellent = percentage >= 80;
@@ -124,24 +118,21 @@ export default function MyScores() {
               return (
                 <div 
                   key={`${record.exam_id}-${idx}`}
-                  className="glass-card p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:border-primary/30 transition-all group"
+                  className="card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 hover:border-border-hover transition-colors duration-150"
                 >
-                  <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center flex-shrink-0 ${
+                  <div className={`w-12 h-12 rounded flex flex-col items-center justify-center flex-shrink-0 ${
                     isExcellent ? "bg-success/10 text-success" : 
                     isGood ? "bg-warning/10 text-warning" : 
                     "bg-danger/10 text-danger"
                   }`}>
-                    <span className="text-lg font-bold">{percentage}%</span>
+                    <span className="text-base font-bold">{percentage}%</span>
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-foreground text-lg truncate group-hover:text-primary transition-colors">
+                    <h3 className="font-bold text-foreground truncate">
                       {record.exam_title}
                     </h3>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
+                    <p className="text-xs text-muted-foreground mt-1">
                       {new Date(record.submitted_at).toLocaleDateString(undefined, {
                         year: 'numeric', month: 'short', day: 'numeric'
                       })}
@@ -157,7 +148,7 @@ export default function MyScores() {
                     </div>
                     <button 
                       onClick={() => router.push(`/exam/${record.exam_id}/submitted`)}
-                      className="ml-auto p-2 rounded-lg bg-card-hover hover:bg-border text-muted-foreground transition-colors"
+                      className="ml-auto p-2 rounded bg-card-hover hover:bg-border text-muted-foreground transition-colors duration-150"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

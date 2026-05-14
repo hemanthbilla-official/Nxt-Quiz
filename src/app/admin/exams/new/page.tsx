@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle, AlertCircle, FileJson, Upload, Copy } from "lucide-react";
 
 const VALID_QUESTION_TYPES = [
   "theory",
@@ -201,6 +202,7 @@ function validateQuestions(questions: unknown[]): { valid: boolean; errors: Vali
 }
 
 export default function CreateExam() {
+  const [currentStep, setCurrentStep] = useState(1);
   const [title, setTitle] = useState("");
   const [duration, setDuration] = useState<number | string>("");
   const [capacity, setCapacity] = useState<number | string>("");
@@ -211,7 +213,18 @@ export default function CreateExam() {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [isValidated, setIsValidated] = useState(false);
   const [result, setResult] = useState<{ examCode: string; examId: string } | null>(null);
+  
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const router = useRouter();
+
+  const handleBlur = (field: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
+  const isFormValid = () => {
+    return title.trim().length > 0 && Number(duration) >= 5 && Number(capacity) >= 1;
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -253,8 +266,7 @@ export default function CreateExam() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreate = async () => {
     if (!isValidated || !validatedQuestions) {
       setError("Please upload and validate a questions JSON file first");
       return;
@@ -264,7 +276,6 @@ export default function CreateExam() {
     setError("");
 
     try {
-      // 1. Create the exam
       const res = await fetch("/api/admin/exams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -283,8 +294,6 @@ export default function CreateExam() {
       }
 
       const examId = data.examId;
-
-      // 2. Import validated questions for this exam
       const importRes = await fetch("/api/admin/questions/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -301,63 +310,54 @@ export default function CreateExam() {
       setResult({ examCode: data.examCode, examId: data.examId });
       setLoading(false);
     } catch (err) {
-      console.error(err);
       setError("Network error occurred during creation");
       setLoading(false);
     }
   };
 
+  const steps = [
+    { id: 1, label: "Exam Info" },
+    { id: 2, label: "Questions" },
+    { id: 3, label: "Review" }
+  ];
+
   if (result) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-full">
-        <div className="w-full max-w-md text-center animate-slide-up">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-success to-accent mb-6 glow-success">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="w-full max-w-md text-center animate-fade-in">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 text-success mb-6">
+            <CheckCircle className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-2">
-            Exam Created!
-          </h1>
-          <p className="text-muted-foreground text-sm mb-6">
-            Share this code with your students
+          <h1 className="text-2xl font-bold mb-2">Exam Created!</h1>
+          <p className="text-muted-foreground text-sm mb-8">
+            Your assessment session is now live. Share the access code below.
           </p>
 
-          <div className="glass-card p-6 sm:p-8 mb-6">
-            <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider">
-              Exam Code
+          <div className="card p-8 mb-8 border-success/30 bg-success/5">
+            <p className="text-[10px] text-muted-foreground mb-3 uppercase tracking-widest font-bold">
+              Access Code
             </p>
-            <p className="text-4xl font-mono font-bold text-accent tracking-widest">
+            <p className="text-5xl font-mono font-bold text-foreground tracking-[0.2em]">
               {result.examCode}
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3">
             <button
-              onClick={() =>
-                navigator.clipboard.writeText(result.examCode)
-              }
-              className="flex-1 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+              onClick={() => {
+                navigator.clipboard.writeText(result.examCode);
+                alert("Code copied to clipboard!");
+              }}
+              className="btn-secondary h-12 flex items-center justify-center gap-2"
             >
-              <span className="flex items-center justify-center gap-1.5"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>Copy Code</span>
+              <Copy className="w-4 h-4" />
+              <span>Copy Code</span>
             </button>
             <button
-              onClick={() =>
-                router.push(`/admin/exams/${result.examId}`)
-              }
-              className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-primary to-secondary text-white hover:scale-[1.02] transition-all"
+              onClick={() => router.push(`/admin/exams/${result.examId}`)}
+              className="btn-primary h-12"
             >
-              Go to Control Panel →
+              Go to Dashboard
             </button>
           </div>
         </div>
@@ -366,220 +366,233 @@ export default function CreateExam() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold text-foreground mb-2">
-          Create New Exam
-        </h1>
-        <p className="text-sm text-muted-foreground mb-8">
-          Create a new exam session. You must upload a valid JSON file of questions. The file will be validated before the exam is created.
-        </p>
+    <div className="max-w-3xl mx-auto py-8 px-4">
+      <div className="mb-10 text-center">
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Create New Exam</h1>
+        <p className="text-muted-foreground">Setup your assessment parameters and questions</p>
+      </div>
 
-        <div className="glass-card p-6 sm:p-8">
-          <form onSubmit={handleCreate} className="space-y-6">
-            {error && (
-              <div className="p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label
-                htmlFor="exam-title"
-                className="block text-sm font-medium text-muted-foreground mb-2"
-              >
-                Exam Title
-              </label>
-              <input
-                id="exam-title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Section A - Final Quiz"
-                className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                required
-              />
+      {/* Stepper Progress */}
+      <div className="flex items-center justify-between mb-12 relative px-10">
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 -z-10" />
+        {steps.map(step => (
+          <div key={step.id} className="flex flex-col items-center gap-2 bg-background px-4">
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
+              currentStep === step.id ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-110" : 
+              currentStep > step.id ? "bg-success border-success text-white" : "bg-background border-border text-muted-foreground"
+            }`}>
+              {currentStep > step.id ? <CheckCircle className="w-5 h-5" /> : step.id}
             </div>
+            <span className={`text-xs font-bold uppercase tracking-wider ${currentStep === step.id ? "text-primary" : "text-muted-foreground"}`}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="duration"
-                  className="block text-sm font-medium text-muted-foreground mb-2"
-                >
-                  Duration (minutes)
-                </label>
-                <input
-                  id="duration"
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value === "" ? "" : Number(e.target.value))}
-                  min={5}
-                  max={180}
-                  className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="capacity"
-                  className="block text-sm font-medium text-muted-foreground mb-2"
-                >
-                  Capacity
-                </label>
-                <input
-                  id="capacity"
-                  type="number"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value === "" ? "" : Number(e.target.value))}
-                  min={1}
-                  max={1000}
-                  className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                  required
-                />
-              </div>
-            </div>
+      <div className="card p-8 min-h-[400px] flex flex-col">
+        {error && (
+          <div className="mb-6 p-4 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm flex items-start gap-3 animate-fade-in">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
 
-            {/* JSON Upload + Validation */}
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 text-xs text-muted-foreground flex flex-col gap-3">
-              <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span>Upload the question JSON file. It will be validated instantly before the exam code is generated.</span>
+        <div className="flex-1">
+          {currentStep === 1 && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Exam Title (required)</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={title}
+                  onBlur={() => handleBlur("title")}
+                  onChange={e => setTitle(e.target.value)}
+                  className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
+                    touched.title && !title.trim() ? "border-danger" : "border-border focus:border-primary"
+                  }`}
+                  placeholder="e.g. Full-stack Assessment Q2"
+                />
+                {touched.title && !title.trim() && (
+                  <p className="text-[10px] text-danger font-bold uppercase mt-1">Title is required</p>
+                )}
               </div>
-              
-              <div className="mt-1">
-                <label className={`cursor-pointer flex items-center gap-3 p-3 rounded-lg border-2 border-dashed transition-all ${
-                  isValidated ? "border-success/50 bg-success/5 text-success" : validationErrors.length > 0 ? "border-danger/50 bg-danger/5 text-danger" : jsonFile ? "border-warning/50 bg-warning/5 text-warning" : "border-border hover:border-primary/50 bg-background"
-                }`}>
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    isValidated ? "bg-success text-white" : validationErrors.length > 0 ? "bg-danger text-white" : "bg-primary/10 text-primary"
-                  }`}>
-                    {isValidated ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    ) : validationErrors.length > 0 ? (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                    ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate">
-                      {isValidated ? `${jsonFile!.name} — Validated` : jsonFile ? jsonFile.name : "Select Questions JSON"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {isValidated
-                        ? `${validatedQuestions!.length} questions ready`
-                        : validationErrors.length > 0
-                          ? `${validationErrors.length} question(s) have errors`
-                          : jsonFile
-                            ? `${(jsonFile.size / 1024).toFixed(1)} KB — validating...`
-                            : "Mandatory file upload"}
-                    </p>
-                  </div>
-                  <input 
-                    type="file" 
-                    accept=".json" 
-                    onChange={handleFileChange}
-                    className="hidden" 
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Duration (mins, required)</label>
+                  <input
+                    type="number"
+                    value={duration}
+                    onBlur={() => handleBlur("duration")}
+                    onChange={e => setDuration(e.target.value === "" ? "" : Number(e.target.value))}
+                    className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
+                      touched.duration && Number(duration) < 5 ? "border-danger" : "border-border focus:border-primary"
+                    }`}
+                    placeholder="Min 5 mins"
                   />
-                </label>
+                  {touched.duration && Number(duration) < 5 && (
+                    <p className="text-[10px] text-danger font-bold uppercase mt-1">Min 5 minutes</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Capacity (required)</label>
+                  <input
+                    type="number"
+                    value={capacity}
+                    onBlur={() => handleBlur("capacity")}
+                    onChange={e => setCapacity(e.target.value === "" ? "" : Number(e.target.value))}
+                    className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
+                      touched.capacity && Number(capacity) < 1 ? "border-danger" : "border-border focus:border-primary"
+                    }`}
+                    placeholder="Min 1 student"
+                  />
+                  {touched.capacity && Number(capacity) < 1 && (
+                    <p className="text-[10px] text-danger font-bold uppercase mt-1">Min capacity is 1</p>
+                  )}
+                </div>
               </div>
             </div>
+          )}
 
-            {/* Validation Errors */}
-            {validationErrors.length > 0 && (
-              <div className="rounded-xl border border-danger/20 overflow-hidden">
-                <div className="bg-danger/10 px-4 py-3 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-danger flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                  <span className="text-sm font-bold text-danger">
-                    Validation Failed — {validationErrors.length} question(s) have issues
-                  </span>
+          {currentStep === 2 && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="p-8 border-2 border-dashed border-border rounded-xl bg-muted/30 text-center flex flex-col items-center">
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${
+                  isValidated ? "bg-success/10 text-success" : validationErrors.length > 0 ? "bg-danger/10 text-danger" : "bg-primary/10 text-primary"
+                }`}>
+                  {isValidated ? <CheckCircle className="w-8 h-8" /> : <FileJson className="w-8 h-8" />}
                 </div>
-                <div className="max-h-60 overflow-y-auto divide-y divide-border">
-                  {validationErrors.map((ve) => (
-                    <div key={ve.index} className="px-4 py-3 bg-card">
-                      <p className="text-xs font-bold text-foreground mb-1.5">
-                        Question #{ve.index + 1}
-                      </p>
-                      <ul className="space-y-1">
-                        {ve.errors.map((err, j) => (
-                          <li key={j} className="text-[11px] text-danger flex items-start gap-1.5">
-                            <span className="text-danger/60 mt-0.5">•</span>
-                            <span>{err}</span>
-                          </li>
+                <h3 className="font-bold text-lg mb-2">Upload Question Data</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-6">
+                  Select a valid JSON file containing your exam questions. We&apos;ll validate the schema instantly.
+                </p>
+                <label className="btn-secondary h-11 px-8 flex items-center gap-2 cursor-pointer">
+                  <Upload className="w-4 h-4" />
+                  <span>{jsonFile ? "Change File" : "Choose File"}</span>
+                  <input type="file" accept=".json" onChange={handleFileChange} className="hidden" />
+                </label>
+                {jsonFile && (
+                  <p className="mt-4 text-xs font-mono text-muted-foreground">{jsonFile.name} ({(jsonFile.size / 1024).toFixed(1)} KB)</p>
+                )}
+              </div>
+
+              {validationErrors.length > 0 && (
+                <div className="rounded-lg border border-danger/30 overflow-hidden animate-fade-in">
+                  <div className="bg-danger/5 px-4 py-3 border-b border-danger/30">
+                    <p className="text-xs font-bold text-danger uppercase tracking-wider">Validation Errors Found ({validationErrors.length})</p>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    {validationErrors.map(err => (
+                      <div key={err.index} className="space-y-1">
+                        <p className="text-[10px] font-bold text-foreground">Question #{err.index + 1}</p>
+                        {err.errors.map((e, idx) => (
+                          <p key={idx} className="text-[11px] text-danger pl-3 border-l border-danger/30">{e}</p>
                         ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Validated Questions Preview */}
-            {isValidated && validatedQuestions && (
-              <div className="rounded-xl border border-success/20 overflow-hidden">
-                <div className="bg-success/10 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    <span className="text-sm font-bold text-success">
-                      All {validatedQuestions.length} questions validated
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
-                    {(() => {
-                      const types = validatedQuestions.reduce((acc, q) => {
-                        const t = q.questionType || "theory";
-                        acc[t] = (acc[t] || 0) + 1;
-                        return acc;
-                      }, {} as Record<string, number>);
-                      return Object.entries(types).map(([type, count]) => (
-                        <span key={type} className="px-2 py-0.5 rounded bg-success/10 text-success font-semibold">
-                          {type}: {count}
-                        </span>
-                      ));
-                    })()}
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="max-h-48 overflow-y-auto divide-y divide-border">
-                  {validatedQuestions.map((q, i) => (
-                    <div key={q.id || i} className="px-4 py-2.5 bg-card flex items-center gap-3 hover:bg-card-hover transition-colors">
-                      <span className="text-[10px] font-mono text-muted w-6 text-right flex-shrink-0">{i + 1}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-foreground line-clamp-1">{q.question}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {q.codeSnippet && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent/10 text-accent font-bold uppercase">Code</span>
-                        )}
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                          q.difficulty === "Intermediate" ? "bg-warning/10 text-warning" : q.difficulty === "Advanced" ? "bg-danger/10 text-danger" : "bg-success/10 text-success"
-                        }`}>
-                          {q.difficulty || "Basic"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || !title.trim() || !isValidated}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="spinner" />
-                  Creating...
-                </span>
-              ) : !isValidated ? (
-                "Upload valid JSON to continue"
-              ) : (
-                `Create Exam with ${validatedQuestions?.length} Questions`
               )}
+
+              {isValidated && validatedQuestions && (
+                <div className="p-4 bg-success/5 border border-success/30 rounded-lg flex items-center justify-between animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-success" />
+                    <div>
+                      <p className="text-sm font-bold text-success">Validation Successful</p>
+                      <p className="text-[11px] text-success/70">{validatedQuestions.length} questions identified and ready to import.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {Object.entries(validatedQuestions.reduce((acc, q) => {
+                      const t = q.questionType || q.question_type || "theory";
+                      acc[t] = (acc[t] || 0) + 1;
+                      return acc;
+                    }, {} as Record<string, number>)).map(([type, count]) => (
+                      <span key={type} className="px-2 py-0.5 rounded bg-success/10 text-success text-[9px] font-bold uppercase tracking-wider">
+                        {type}: {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="space-y-8 animate-fade-in">
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Exam Title</p>
+                  <p className="font-bold text-xl">{title}</p>
+                </div>
+                <div className="flex gap-12">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Duration</p>
+                    <p className="font-bold">{duration} mins</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Capacity</p>
+                    <p className="font-bold">{capacity} seats</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-muted/30 border border-border rounded-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Questions Summary</p>
+                  <span className="text-xs font-bold">{validatedQuestions?.length} Total Questions</span>
+                </div>
+                <div className="space-y-2">
+                  {validatedQuestions?.slice(0, 5).map((q, idx) => (
+                    <div key={idx} className="flex items-center gap-3 py-1.5 text-xs border-b border-border/50 last:border-0">
+                      <span className="text-muted-foreground font-mono w-4">{idx + 1}</span>
+                      <span className="flex-1 truncate">{q.question}</span>
+                      <span className="text-[9px] px-1.5 py-0.5 bg-background border border-border rounded text-muted-foreground uppercase font-bold tracking-tighter">
+                        {q.questionType || q.question_type || "theory"}
+                      </span>
+                    </div>
+                  ))}
+                  {(validatedQuestions?.length || 0) > 5 && (
+                    <p className="text-[10px] text-center text-muted-foreground pt-2">
+                      + {(validatedQuestions?.length || 0) - 5} more questions
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-12 flex items-center justify-between pt-6 border-t border-border">
+          <button
+            disabled={currentStep === 1 || loading}
+            onClick={() => setCurrentStep(prev => prev - 1)}
+            className="btn-secondary h-11 px-6 disabled:opacity-0"
+          >
+            Previous
+          </button>
+          
+          {currentStep < 3 ? (
+            <button
+              disabled={currentStep === 1 ? !isFormValid() : !isValidated}
+              onClick={() => setCurrentStep(prev => prev + 1)}
+              className="btn-primary h-11 px-8"
+            >
+              Next Step
             </button>
-          </form>
+          ) : (
+            <button
+              disabled={loading}
+              onClick={handleCreate}
+              className="btn-primary h-11 px-10 flex items-center gap-2"
+            >
+              {loading && <div className="spinner h-4 w-4 border-white border-t-transparent" />}
+              <span>{loading ? "Creating..." : "Confirm & Create Exam"}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

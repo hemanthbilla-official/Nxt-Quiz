@@ -85,7 +85,7 @@ export default function LiveMonitor() {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-sm">
+        <div className="mb-4 p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm">
           {error}
         </div>
       )}
@@ -96,21 +96,18 @@ export default function LiveMonitor() {
             Real-time status of all active and waiting exams
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success text-xs font-bold">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-success/10 text-success text-xs font-bold">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
           Auto-refreshing
         </div>
       </div>
 
       {exams.length === 0 ? (
-        <div className="glass-card p-12 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </div>
+        <div className="card p-12 text-center">
           <p className="text-muted-foreground">No exams are currently live or waiting</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {exams.map((exam) => {
             const progress = Math.min((exam.participant_count / exam.capacity) * 100, 100);
             
@@ -118,18 +115,18 @@ export default function LiveMonitor() {
               <Link
                 key={exam.id}
                 href={`/admin/exams/${exam.id}`}
-                className="glass-card p-6 hover:border-primary/50 transition-all group"
+                className="card p-5 hover:border-border-hover transition-colors duration-150 group"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors duration-150 line-clamp-1">
                       {exam.title}
                     </h3>
-                    <p className="text-xs font-mono text-accent font-bold mt-1">
+                    <p className="text-xs font-mono text-primary font-bold mt-1">
                       {exam.exam_code}
                     </p>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded-lg border font-bold uppercase tracking-wider ${
+                  <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
                     exam.status === 'in_progress' 
                       ? 'bg-primary/10 text-primary border-primary/20' 
                       : 'bg-warning/10 text-warning border-warning/20'
@@ -140,15 +137,15 @@ export default function LiveMonitor() {
 
                 <div className="space-y-4">
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 rounded-lg bg-warning/5 border border-warning/10 text-center">
+                    <div className="p-2 rounded bg-warning/5 border border-warning/10 text-center">
                       <p className="text-sm font-bold text-warning">{exam.waiting_count || 0}</p>
                       <p className="text-[10px] text-muted-foreground uppercase">Waiting</p>
                     </div>
-                    <div className="p-2 rounded-lg bg-primary/5 border border-primary/10 text-center">
+                    <div className="p-2 rounded bg-primary/5 border border-primary/10 text-center">
                       <p className="text-sm font-bold text-primary">{exam.active_count || 0}</p>
                       <p className="text-[10px] text-muted-foreground uppercase">Active</p>
                     </div>
-                    <div className="p-2 rounded-lg bg-success/5 border border-success/10 text-center">
+                    <div className="p-2 rounded bg-success/5 border border-success/10 text-center">
                       <p className="text-sm font-bold text-success">{exam.submitted_count || 0}</p>
                       <p className="text-[10px] text-muted-foreground uppercase">Done</p>
                     </div>
@@ -161,7 +158,7 @@ export default function LiveMonitor() {
                     </div>
                     <div className="w-full h-1.5 bg-border/50 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full transition-all duration-1000 ${
+                        className={`h-full transition-all duration-200 ${
                           exam.status === 'in_progress' ? 'bg-primary' : 'bg-warning'
                         }`}
                         style={{ width: `${progress}%` }}
@@ -170,17 +167,16 @@ export default function LiveMonitor() {
                   </div>
 
                   {exam.total_tab_switches && exam.total_tab_switches > 0 ? (
-                    <div className="flex items-center gap-2 p-2 rounded-lg bg-danger/5 border border-danger/10 text-danger text-[10px] font-bold animate-pulse">
+                    <div className="flex items-center gap-2 p-2 rounded bg-danger/5 border border-danger/10 text-danger text-[10px] font-bold">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                       {exam.total_tab_switches} TAB SWITCHES DETECTED
                     </div>
                   ) : null}
 
                   <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px]">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span className="text-muted-foreground">
                       {Math.round(exam.duration_seconds / 60)} min
-                    </div>
+                    </span>
                     <span className="text-primary font-bold">
                       Control Exam →
                     </span>

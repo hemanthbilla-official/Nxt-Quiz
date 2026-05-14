@@ -67,21 +67,15 @@ export default function JoinExam() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top bar */}
       <header className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <span className="text-white font-bold text-sm">N</span>
-          </div>
-          <span className="text-sm font-medium text-foreground">
-            Nxt-Quiz
-          </span>
+          <span className="text-sm font-bold text-foreground">Nxt-Quiz</span>
         </div>
         <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
           <ThemeToggle />
           <button
             onClick={() => router.push("/scores")}
-            className="text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2"
+            className="text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded transition-colors duration-150 flex items-center gap-2"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
@@ -92,7 +86,7 @@ export default function JoinExam() {
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="text-xs text-muted hover:text-danger transition-colors flex items-center gap-2"
+            className="text-xs text-muted hover:text-danger transition-colors duration-150 flex items-center gap-2"
           >
             {loggingOut && <div className="spinner" style={{ width: 10, height: 10 }} />}
             {loggingOut ? "Signing out..." : "Sign Out"}
@@ -100,25 +94,9 @@ export default function JoinExam() {
         </div>
       </header>
 
-      {/* Main */}
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-md animate-slide-up">
+        <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-accent to-primary mb-4">
-              <svg
-                className="w-7 h-7 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                />
-              </svg>
-            </div>
             <h1 className="text-2xl font-bold text-foreground mb-1">
               Join Exam
             </h1>
@@ -127,10 +105,10 @@ export default function JoinExam() {
             </p>
           </div>
 
-          <div className="glass-card p-6 sm:p-8">
+          <div className="card p-8">
             <form onSubmit={handleJoin} className="space-y-6">
               {error && (
-                <div className="p-4 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
+                <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
                   {error}
                 </div>
               )}
@@ -148,7 +126,7 @@ export default function JoinExam() {
                   value={examCode}
                   onChange={(e) => setExamCode(e.target.value.toUpperCase())}
                   placeholder="e.g. RCT-A7X3"
-                  className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-center text-lg font-mono tracking-widest"
+                  className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors duration-150 text-center text-lg font-mono tracking-widest"
                   required
                   autoFocus
                   maxLength={20}
@@ -158,7 +136,7 @@ export default function JoinExam() {
               <button
                 type="submit"
                 disabled={loading || !examCode.trim()}
-                className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed glow-primary"
+                className="w-full py-3 px-6 rounded bg-primary text-white font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

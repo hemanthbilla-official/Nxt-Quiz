@@ -25,7 +25,7 @@ export default function EditExamModal({
 }: EditExamModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="glass-card p-6 sm:p-8 w-full max-w-md animate-slide-up">
+      <div className="card p-6 sm:p-8 w-full max-w-md">
         <h2 className="text-xl font-bold text-foreground mb-6">
           Edit Exam Settings
         </h2>
@@ -40,7 +40,7 @@ export default function EditExamModal({
               onChange={(e) =>
                 onFormChange((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+              className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
               required
             />
           </div>
@@ -59,7 +59,7 @@ export default function EditExamModal({
                       e.target.value === "" ? "" : parseInt(e.target.value),
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
                 required
               />
             </div>
@@ -77,7 +77,7 @@ export default function EditExamModal({
                       e.target.value === "" ? "" : parseInt(e.target.value),
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
                 required
               />
             </div>
@@ -86,14 +86,14 @@ export default function EditExamModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+              className="flex-1 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSaving ? (
                 <>

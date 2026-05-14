@@ -269,7 +269,7 @@ export default function ExamControl({
   if (error || !exam) {
     return (
       <div className="flex items-center justify-center h-full p-20">
-        <div className="glass-card p-8 max-w-sm text-center">
+        <div className="card p-8 max-w-sm text-center">
           <div className="w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mx-auto mb-4">
             <svg
               className="w-6 h-6"
@@ -293,7 +293,7 @@ export default function ExamControl({
           </p>
           <button
             onClick={() => fetchData()}
-            className="w-full py-2.5 rounded-xl bg-primary text-white font-medium hover:bg-primary-hover transition-all"
+            className="w-full py-2.5 rounded bg-primary text-white font-medium hover:bg-primary-hover transition-all"
           >
             Retry
           </button>

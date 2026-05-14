@@ -1,6 +1,5 @@
 "use client";
 
-// STD-03: Global error boundary for unhandled runtime errors
 export default function Error({
   error,
   reset,
@@ -10,8 +9,8 @@ export default function Error({
 }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="glass-card p-8 max-w-md w-full text-center animate-slide-up">
-        <div className="w-16 h-16 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-6">
+      <div className="card p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 rounded bg-danger/10 flex items-center justify-center mx-auto mb-6">
           <svg
             className="w-8 h-8 text-danger"
             aria-hidden="true"
@@ -35,7 +34,7 @@ export default function Error({
         </p>
         <button
           onClick={reset}
-          className="w-full py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-white font-semibold hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="w-full py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors duration-150"
         >
           Try Again
         </button>

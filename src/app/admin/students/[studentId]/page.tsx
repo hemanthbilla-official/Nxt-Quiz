@@ -103,9 +103,9 @@ export default function StudentDetails({
         {/* Left Col: Profile & Attempts List */}
         <div className="space-y-6">
           {/* Profile Card */}
-          <div className="glass-card p-6">
+          <div className="card p-6">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-16 h-16 rounded bg-primary flex items-center justify-center text-white text-2xl font-bold">
                 {data.student.full_name?.[0] || "S"}
               </div>
               <div>
@@ -130,7 +130,7 @@ export default function StudentDetails({
           </div>
 
           {/* Exam History */}
-          <div className="glass-card overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="p-4 border-b border-border bg-card/50">
               <h3 className="font-semibold text-foreground">Exam History</h3>
             </div>
@@ -167,7 +167,7 @@ export default function StudentDetails({
         {/* Right Col: Attempt Breakdown */}
         <div className="lg:col-span-2">
           {attempt && attempt.status === 'submitted' && attempt.answers ? (
-            <div className="glass-card">
+            <div className="card">
               <div className="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between sticky top-0 bg-card z-10 rounded-t-2xl gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-foreground">Submission Review</h2>
@@ -182,7 +182,7 @@ export default function StudentDetails({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1 bg-card border border-border p-1 rounded-xl">
+                <div className="flex flex-wrap items-center gap-1 bg-card border border-border p-1 rounded">
                   {(["All", "Correct", "Incorrect", "Skipped"] as const).map((f) => {
                     const count = attempt.answers?.filter(ans => {
                       const isCorrect = ans.selected_option_id === ans.questions.correct_option_id;
@@ -223,7 +223,7 @@ export default function StudentDetails({
 
               <div className="p-6 space-y-8">
                 {filteredAnswers?.length === 0 ? (
-                  <div className="p-12 text-center text-muted-foreground glass-card border-dashed">
+                  <div className="p-12 text-center text-muted-foreground card border-dashed">
                     No items match this filter.
                   </div>
                 ) : (
@@ -264,7 +264,7 @@ export default function StudentDetails({
                             return (
                               <div
                                 key={opt.id}
-                                className={`p-3 rounded-xl border-2 text-sm flex gap-3 ${borderColor} ${bgColor} text-foreground`}
+                                className={`p-3 rounded border-2 text-sm flex gap-3 ${borderColor} ${bgColor} text-foreground`}
                               >
                                 <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${isCorrectOpt ? 'bg-success text-white' : isSelected ? 'bg-danger text-white' : 'bg-border/50 text-muted-foreground'}`}>
                                   {opt.id}
@@ -275,7 +275,7 @@ export default function StudentDetails({
                           })}
                         </div>
 
-                        <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 text-xs">
+                        <div className="mt-4 p-4 rounded bg-primary/5 border border-primary/10 text-xs">
                           <p className="font-bold text-primary mb-1 uppercase tracking-widest">Explanation</p>
                           <p className="text-muted-foreground leading-relaxed">{ans.questions.explanation}</p>
                         </div>
@@ -286,7 +286,7 @@ export default function StudentDetails({
               </div>
             </div>
           ) : attempt ? (
-            <div className="glass-card p-12 text-center">
+            <div className="card p-12 text-center">
               <div className="w-16 h-16 rounded-full bg-warning/10 text-warning flex items-center justify-center mx-auto mb-4">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
               </div>
@@ -296,7 +296,7 @@ export default function StudentDetails({
               </p>
             </div>
           ) : (
-            <div className="glass-card p-12 text-center text-muted-foreground">
+            <div className="card p-12 text-center text-muted-foreground">
               Select an exam attempt to view details
             </div>
           )}

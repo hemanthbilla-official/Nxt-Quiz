@@ -262,13 +262,13 @@ export default function Submitted({
       <div
         className={`w-full pt-16 pb-32 px-4 text-center relative overflow-hidden transition-colors duration-700 ${
           isPass
-            ? "bg-gradient-to-b from-success/10 to-transparent"
-            : "bg-gradient-to-b from-danger/10 to-transparent"
+            ? "bg-success/10"
+            : "bg-danger/10"
         }`}
       >
         <div className="relative z-10 max-w-4xl mx-auto animate-fade-in">
           <div
-            className={`inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-6 shadow-2xl transition-transform hover:scale-110 duration-500 ${
+            className={`inline-flex items-center justify-center w-20 h-20 rounded mb-6 transition-transform duration-500 ${
               isPass
                 ? "bg-success text-white rotate-12"
                 : "bg-danger text-white -rotate-12"
@@ -317,7 +317,7 @@ export default function Submitted({
 
       {/* ──────────────────────── SCORE CARD ──────────────────────── */}
       <div className="max-w-4xl mx-auto px-4 -mt-20 relative z-20">
-        <div className="glass-card overflow-hidden border-none shadow-2xl bg-card backdrop-blur-xl">
+        <div className="card overflow-hidden border-none bg-card">
           <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border">
             <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center space-y-4">
               <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
@@ -406,10 +406,10 @@ export default function Submitted({
             <button
               onClick={handleToggleReview}
               disabled={loadingResults}
-              className={`flex-1 px-8 py-4 rounded-2xl text-sm font-bold transition-all flex items-center justify-center gap-3 shadow-xl ${
+              className={`flex-1 px-8 py-4 rounded text-sm font-bold transition-all flex items-center justify-center gap-3 ${
                 showReview
                   ? "bg-border text-foreground"
-                  : "bg-primary text-white hover:bg-primary-hover hover:scale-[1.02]"
+                  : "bg-primary text-white hover:bg-primary-hover"
               }`}
             >
               {loadingResults ? (
@@ -442,7 +442,7 @@ export default function Submitted({
             </button>
             <button
               onClick={() => router.push("/exam/join")}
-              className="flex-1 px-8 py-4 rounded-2xl text-sm font-bold bg-card border border-border text-foreground hover:bg-card-hover transition-all shadow-lg flex items-center justify-center gap-3"
+              className="flex-1 px-8 py-4 rounded text-sm font-bold bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center justify-center gap-3"
             >
               <svg
                 className="w-5 h-5"
@@ -465,9 +465,9 @@ export default function Submitted({
 
       {/* ──────────────────────── DETAILED REVIEW ──────────────────────── */}
       {showReview && (
-        <div className="max-w-4xl mx-auto px-4 mt-12 animate-slide-up">
+        <div className="max-w-4xl mx-auto px-4 mt-12">
           {isPublished && (
-          <div className="sticky top-6 z-40 bg-card/80 backdrop-blur-md p-2 rounded-2xl border border-border flex flex-wrap items-center justify-between gap-3 shadow-lg mb-8">
+          <div className="sticky top-6 z-40 bg-card/80 p-2 rounded border border-border flex flex-wrap items-center justify-between gap-3 mb-8">
             <h2 className="px-4 text-sm font-bold text-foreground">
               Examination Review
             </h2>
@@ -490,7 +490,7 @@ export default function Submitted({
                     <button
                       key={f}
                       onClick={() => setFilter(f)}
-                      className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 ${
+                      className={`px-4 py-2 rounded text-xs font-black transition-all flex items-center gap-2 ${
                         filter === f
                           ? "bg-foreground text-background"
                           : "text-muted-foreground hover:bg-card-hover"
@@ -516,7 +516,7 @@ export default function Submitted({
               return (
                 <div
                   key={r.id}
-                  className={`glass-card overflow-hidden border-l-8 ${
+                  className={`card overflow-hidden border-l-8 ${
                     isPublished
                       ? isCorrect
                         ? "border-l-success"
@@ -555,7 +555,7 @@ export default function Submitted({
                     </h3>
 
                     {r.codeSnippet && (
-                      <pre className="code-block p-6 rounded-2xl overflow-x-auto text-sm">
+                      <pre className="code-block p-6 rounded overflow-x-auto text-sm">
                         <code>{r.codeSnippet}</code>
                       </pre>
                     )}
@@ -580,7 +580,7 @@ export default function Submitted({
                         </div>
 
                         {isSkipped ? (
-                          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-semibold text-amber-500">
+                          <div className="rounded border border-amber-500/30 bg-amber-500/10 p-4 text-sm font-semibold text-amber-500">
                             No code was submitted for this question.
                           </div>
                         ) : (
@@ -588,7 +588,7 @@ export default function Submitted({
                             {codeFiles.map((file) => (
                               <div
                                 key={file.name}
-                                className="overflow-hidden rounded-2xl border border-border bg-card"
+                                className="overflow-hidden rounded border border-border bg-card"
                               >
                                 <div className="flex items-center justify-between border-b border-border bg-card-hover px-4 py-2">
                                   <span className="font-mono text-xs font-bold text-foreground">
@@ -630,7 +630,7 @@ export default function Submitted({
                           return (
                             <div
                               key={opt.id}
-                              className={`p-4 rounded-2xl border-2 transition-all flex items-start gap-4 ${stateClass}`}
+                              className={`p-4 rounded border-2 transition-all flex items-start gap-4 ${stateClass}`}
                             >
                               <div
                                 className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-xs font-black ${
@@ -670,7 +670,7 @@ export default function Submitted({
                     )}
 
                     {isPublished && r.explanation && (
-                      <div className="mt-4 p-5 rounded-2xl bg-card-hover border border-border">
+                      <div className="mt-4 p-5 rounded bg-card-hover border border-border">
                         <p className="text-xs font-black uppercase tracking-widest text-foreground mb-2">
                           Explanation
                         </p>

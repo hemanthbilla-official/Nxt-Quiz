@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { 
+  Plus, 
+  Search, 
+  Users, 
+  Clock, 
+  Calendar, 
+  ChevronRight,
+  Inbox,
+  Activity,
+  ArrowUpRight,
+  Layers
+} from "lucide-react";
 
 interface Exam {
   id: string;
@@ -21,36 +33,36 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchExams = async () => {
-      const res = await fetch("/api/admin/exams");
-      if (res.ok) {
-        const data = await res.json();
-        setExams(data.exams || []);
+      try {
+        const res = await fetch("/api/admin/exams");
+        if (res.ok) {
+          const data = await res.json();
+          setExams(data.exams || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch exams:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchExams();
   }, []);
 
-  const statusColors: Record<string, string> = {
-    draft: "text-muted bg-muted/10 border-muted/20",
-    waiting: "text-warning bg-warning/10 border-warning/20",
-    in_progress: "text-primary bg-primary/10 border-primary/20",
-    closed: "text-success bg-success/10 border-success/20",
+  const statusConfig: Record<string, { label: string; class: string }> = {
+    draft: { label: "Draft", class: "bg-muted/10 text-muted-foreground border-muted/20" },
+    waiting: { label: "Waiting", class: "bg-warning/10 text-warning border-warning/20" },
+    in_progress: { label: "Live", class: "bg-primary/10 text-primary border-primary/20" },
+    closed: { label: "Closed", class: "bg-success/10 text-success border-success/20" },
   };
 
   if (loading) {
     return (
-      <div className="screen-loader">
-        <div className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
+        <div className="spinner mb-4 h-8 w-8" />
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Orchestrating Dashboard...</p>
       </div>
     );
   }
-
-  const grouped = {
-    in_progress: exams.filter((e) => e.status === "in_progress"),
-    waiting: exams.filter((e) => e.status === "waiting"),
-    closed: exams.filter((e) => e.status === "closed"),
-  };
 
   const filteredExams = exams.filter(
     (e) =>
@@ -59,113 +71,110 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-        <h1 className="text-3xl font-bold text-foreground">Exam Dashboard</h1>
-        
-        {/* Compact Metrics Bar */}
-        <div className="flex flex-wrap items-center gap-3 glass-card px-4 py-2 rounded-2xl w-full md:w-auto">
-          {[
-            { label: "Active", count: grouped.in_progress.length, color: "text-primary", dot: "bg-primary" },
-            { label: "Waiting", count: grouped.waiting.length, color: "text-warning", dot: "bg-warning" },
-            { label: "Closed", count: grouped.closed.length, color: "text-success", dot: "bg-success" },
-          ].map((s, i) => (
-            <div key={s.label} className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${s.dot} ${s.label === "Active" && s.count > 0 ? "animate-pulse" : ""}`}></span>
-                <span className="text-sm font-medium text-foreground">{s.label}</span>
-                <span className={`text-sm font-bold ${s.color}`}>{s.count}</span>
-              </div>
-              {i < 2 && <div className="w-px h-6 bg-border mx-1"></div>}
-            </div>
-          ))}
+    <div className="max-w-6xl mx-auto py-4 space-y-10 animate-fade-in">
+      {/* Header Section */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border pb-8">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">System Overview</h1>
+          <p className="text-sm text-muted-foreground">Monitor and manage your assessment pipeline.</p>
         </div>
+        
+        <Link href="/admin/exams/new" className="btn-primary h-11 px-6 flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          <span>Create Assessment</span>
+        </Link>
       </div>
 
-      {/* Search */}
-      <div className="glass-card p-2 flex items-center gap-3 h-14 mb-6">
-        <svg aria-hidden="true" className="w-5 h-5 text-muted-foreground ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-        <input 
-          type="text" 
-          placeholder="Search exams by title or code..." 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-transparent border-none focus:ring-0 text-sm text-foreground p-2 outline-none h-full"
-          aria-label="Search exams by title or code"
-        />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="p-2 mr-1 text-muted-foreground hover:text-foreground flex-shrink-0" aria-label="Clear search">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+      {/* Main Content Card */}
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Layers className="w-4 h-4" />
+            <h2 className="text-sm font-bold uppercase tracking-widest">Exam Repository</h2>
+          </div>
+
+          <div className="relative max-w-xs w-full group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input 
+              type="text" 
+              placeholder="Filter by title or code..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 bg-background border border-border rounded-md pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+            />
+          </div>
+        </div>
+
+        {filteredExams.length === 0 ? (
+          <div className="card overflow-hidden">
+            <div className="p-20 flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
+                <Inbox className="w-8 h-8 text-muted-foreground/30" />
+              </div>
+              <h3 className="text-lg font-bold">
+                {searchQuery ? "No matching records" : "Repository empty"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto mb-8">
+                {searchQuery 
+                  ? "Adjust your search parameters to find the specific assessment." 
+                  : "Begin by creating your first exam to see it listed here in the repository."}
+              </p>
+              {!searchQuery && (
+                <Link href="/admin/exams/new" className="btn-secondary h-10 px-6 flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  <span>Initialize Repository</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredExams.map((exam) => {
+              const config = statusConfig[exam.status] || statusConfig.draft;
+              return (
+                <Link
+                  key={exam.id}
+                  href={`/admin/exams/${exam.id}`}
+                  className="flex flex-col justify-between p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all group"
+                >
+                  <div className="flex-1 min-w-0 space-y-4">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 bg-primary/5 text-primary uppercase tracking-widest">
+                        {exam.exam_code}
+                      </span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-widest ${config.class}`}>
+                        {config.label}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-bold group-hover:text-primary transition-colors line-clamp-2">
+                      {exam.title}
+                    </h4>
+                    <div className="flex flex-col gap-2 pt-2">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                        <Users className="w-4 h-4" />
+                        <span>{exam.participant_count || 0} Students</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                        <Clock className="w-4 h-4" />
+                        <span>{Math.round(exam.duration_seconds / 60)} Minutes</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                        <Calendar className="w-4 h-4" />
+                        <span>{new Date(exam.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-8 pt-4 border-t border-border/50 flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">Control Panel</span>
+                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </div>
-
-      {/* Exam List */}
-      {filteredExams.length === 0 ? (
-        <div className="glass-card p-16 text-center border-dashed border-2 border-border/50">
-          <div className="w-16 h-16 rounded-full bg-muted/10 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-          </div>
-          <h3 className="text-lg font-bold text-foreground mb-2">No exams found</h3>
-          <p className="text-muted-foreground mb-6 text-sm">Create a new exam to get started or adjust your search.</p>
-          <Link href="/admin/exams/new" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-primary/20">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Create First Exam
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filteredExams.map((exam) => (
-            <Link
-              key={exam.id}
-              href={`/admin/exams/${exam.id}`}
-              className="group relative block glass-card p-6 overflow-hidden hover:border-primary/30 transition-all duration-300"
-            >
-              <div className={`absolute top-0 left-0 w-1 h-full ${
-                exam.status === "in_progress" ? "bg-primary" : 
-                exam.status === "waiting" ? "bg-warning" : 
-                exam.status === "closed" ? "bg-success" : "bg-muted"
-              }`}></div>
-              
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="font-mono text-xs px-2.5 py-1 rounded-md bg-accent/10 text-accent font-bold tracking-wider">
-                      {exam.exam_code}
-                    </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold border ${statusColors[exam.status] || ""}`}>
-                      {exam.status.replace("_", " ")}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                    {exam.title}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs text-muted-foreground mt-3">
-                    <div className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                      {exam.participant_count || 0} students
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {Math.round(exam.duration_seconds / 60)} mins
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                      {new Date(exam.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center sm:justify-end">
-                  <div className="w-8 h-8 rounded-full bg-muted/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

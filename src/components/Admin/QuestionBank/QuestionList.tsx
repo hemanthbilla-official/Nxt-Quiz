@@ -15,7 +15,7 @@ export function QuestionList({
 }: QuestionListProps) {
   if (selectedExamName === "") {
     return (
-      <div className="glass-card p-12 text-center border-border">
+      <div className="card p-12 text-center border-border">
         <svg
           className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50"
           fill="none"
@@ -48,7 +48,7 @@ export function QuestionList({
 
   if (examsToRender.length === 0) {
     return (
-      <div className="glass-card p-12 text-center border-border">
+      <div className="card p-12 text-center border-border">
         <svg
           className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50"
           fill="none"
@@ -77,7 +77,7 @@ export function QuestionList({
       {examsToRender.map(([examName, qs]) => (
         <div
           key={examName}
-          className="glass-card overflow-hidden animate-fade-in shadow-sm border border-border"
+          className="card overflow-hidden animate-fade-in shadow-sm border border-border"
         >
           <div className="bg-card-hover px-4 sm:px-6 py-4 border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-sm font-bold text-foreground break-words">

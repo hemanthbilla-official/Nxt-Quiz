@@ -17,13 +17,12 @@ export function ProctoringModals({
 }: ProctoringModalsProps) {
   return (
     <>
-      {/* Tab Switch Warning Modal */}
       {showTabWarning && (
-        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-card p-8 max-w-md w-full text-center animate-slide-up shadow-2xl border-danger/30">
-            <div className="w-20 h-20 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-6">
+        <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4">
+          <div className="card p-8 max-w-md w-full text-center border-danger/30">
+            <div className="w-16 h-16 rounded bg-danger/10 flex items-center justify-center mx-auto mb-6">
               <svg
-                className="w-10 h-10 text-danger"
+                className="w-8 h-8 text-danger"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -36,11 +35,11 @@ export function ProctoringModals({
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
+            <h2 className="text-xl font-bold text-foreground mb-2">
               Warning!
             </h2>
-            <p className="text-danger font-semibold mb-4 text-lg">
-              What&apos;s up, Seems Like you cheated by tab switching
+            <p className="text-danger font-semibold mb-4">
+              Tab switch detected
             </p>
             <p className="text-muted-foreground mb-8 text-sm">
               Your activity has been logged and reported to the administrator.
@@ -48,7 +47,7 @@ export function ProctoringModals({
             </p>
             <button
               onClick={() => setShowTabWarning(false)}
-              className="w-full py-4 rounded-2xl bg-danger text-white font-bold text-lg hover:bg-danger-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-danger/20"
+              className="w-full py-3 rounded bg-danger text-white font-bold hover:opacity-90 transition-opacity duration-150"
             >
               I Understand
             </button>
@@ -56,13 +55,12 @@ export function ProctoringModals({
         </div>
       )}
 
-      {/* Full screen enforcement modal */}
       {fullscreenRequired && !isFullScreen && !loading && (
-        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden">
-          <div className="glass-card p-8 max-w-md w-full text-center animate-slide-up shadow-2xl border-primary/20">
-            <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+        <div className="fixed inset-0 z-[100] bg-background/80 flex items-center justify-center p-4 overflow-hidden">
+          <div className="card p-8 max-w-md w-full text-center border-primary/20">
+            <div className="w-16 h-16 rounded bg-primary/10 flex items-center justify-center mx-auto mb-6">
               <svg
-                className="w-10 h-10 text-primary"
+                className="w-8 h-8 text-primary"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -75,7 +73,7 @@ export function ProctoringModals({
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
+            <h2 className="text-xl font-bold text-foreground mb-2">
               Full Screen Required
             </h2>
             <p className="text-muted-foreground mb-8 text-sm">
@@ -84,7 +82,7 @@ export function ProctoringModals({
             </p>
             <button
               onClick={enterFullScreen}
-              className="w-full py-4 rounded-2xl bg-primary text-white font-bold text-lg hover:bg-primary-hover hover:scale-[1.02] active:scale-[0.98] transition-all glow-primary shadow-xl"
+              className="w-full py-3 rounded bg-primary text-white font-bold hover:bg-primary-hover transition-colors duration-150"
             >
               Enter Full Screen to Continue
             </button>

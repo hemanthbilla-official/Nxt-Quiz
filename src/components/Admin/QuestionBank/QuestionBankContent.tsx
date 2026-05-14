@@ -208,7 +208,7 @@ export function QuestionBankContent() {
           <select
             value={selectedExamName}
             onChange={(e) => setSelectedExamName(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-background border border-border text-sm font-semibold focus:outline-none focus:border-primary transition-all w-full sm:w-64 shadow-sm"
+            className="px-4 py-2 rounded bg-background border border-border text-sm font-semibold focus:outline-none focus:border-primary transition-all w-full sm:w-64 shadow-sm"
           >
             <option value="" disabled>
               Select an Exam...
@@ -225,13 +225,13 @@ export function QuestionBankContent() {
             placeholder="Search questions..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2 rounded-xl bg-background border border-border text-sm w-full sm:w-48 focus:outline-none focus:border-primary transition-all shadow-sm"
+            className="px-4 py-2 rounded bg-background border border-border text-sm w-full sm:w-48 focus:outline-none focus:border-primary transition-all shadow-sm"
           />
           {questions.length > 0 && process.env.NEXT_PUBLIC_ENVIRONMENT === "local" && (
             <button
               onClick={handleHardReset}
               disabled={isDeletingAll}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-danger hover:bg-danger/10 border border-danger/20 transition-all flex items-center gap-2 shadow-sm"
+              className="px-4 py-2 rounded text-xs font-bold text-danger hover:bg-danger/10 border border-danger/20 transition-all flex items-center gap-2 shadow-sm"
             >
               {isDeletingAll ? (
                 <>
@@ -260,7 +260,7 @@ export function QuestionBankContent() {
           )}
           <button
             onClick={handleDownloadTemplate}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 shadow-sm"
+            className="px-4 py-2 rounded text-xs font-semibold bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 shadow-sm"
           >
             <svg
               className="w-4 h-4"
@@ -282,7 +282,7 @@ export function QuestionBankContent() {
               setEditingId(null);
               setShowAdd(true);
             }}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-primary to-secondary text-white hover:scale-[1.02] active:scale-[0.98] transition-all shadow-md"
+            className="px-4 py-2 rounded text-xs font-bold bg-primary text-white transition-all shadow-md"
           >
             + Add Question
           </button>

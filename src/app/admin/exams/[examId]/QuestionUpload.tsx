@@ -16,7 +16,7 @@ export default function QuestionUpload({
   if (exam.status !== "waiting") return null;
 
   return (
-    <div className="glass-card p-6 bg-gradient-to-br from-card to-card-hover border-primary/20">
+    <div className="card p-6 bg-card border-primary/20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-bold text-foreground mb-1">
@@ -29,10 +29,10 @@ export default function QuestionUpload({
           </p>
         </div>
         <label
-          className={`cursor-pointer flex-shrink-0 px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`cursor-pointer flex-shrink-0 px-6 py-3 rounded text-sm font-bold transition-all flex items-center justify-center gap-2 ${
             isImporting
               ? "bg-muted text-muted-foreground"
-              : "bg-primary text-white hover:bg-primary-hover shadow-lg shadow-primary/20"
+              : "bg-primary text-white hover:bg-primary-hover"
           }`}
         >
           {isImporting ? (

@@ -255,13 +255,13 @@ export default function AdminControlsPage() {
       </div>
 
       {setupError && (
-        <div className="mb-6 rounded-xl border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+        <div className="mb-6 rounded border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
           {setupError}
         </div>
       )}
 
       {message && (
-        <div className="mb-6 rounded-xl border border-border bg-card p-4 text-sm font-semibold text-foreground">
+        <div className="mb-6 rounded border border-border bg-card p-4 text-sm font-semibold text-foreground">
           {message}
         </div>
       )}
@@ -271,7 +271,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={saveControls}
           disabled={saving || loading}
-          className="rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover disabled:opacity-50"
+          className="rounded bg-primary px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover disabled:opacity-50"
         >
           {saving ? "Saving..." : "Save Controls"}
         </button>
@@ -279,7 +279,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(true)}
           disabled={saving || loading}
-          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
         >
           Enable All
         </button>
@@ -287,7 +287,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(false)}
           disabled={saving || loading}
-          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
         >
           Disable All
         </button>
@@ -295,7 +295,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={resetDefaults}
           disabled={saving || loading}
-          className="rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-card-hover hover:text-foreground disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-card-hover hover:text-foreground disabled:opacity-50"
         >
           Reset Defaults
         </button>
@@ -313,7 +313,7 @@ export default function AdminControlsPage() {
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {controlGroups.map((group) => (
-          <section key={group.title} className="glass-card overflow-hidden">
+          <section key={group.title} className="card overflow-hidden">
             <div className="border-b border-border bg-card-hover px-5 py-4">
               <h2 className="text-lg font-bold text-foreground">
                 {group.title}

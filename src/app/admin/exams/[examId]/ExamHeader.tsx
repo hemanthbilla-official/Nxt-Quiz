@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft, Database, Activity, UserCheck, Users } from "lucide-react";
 import { ExamData, STATUS_COLORS } from "./types";
 
 interface ExamHeaderProps {
@@ -24,114 +25,94 @@ export default function ExamHeader({
       value: "waiting",
       count: waitingCount,
       color: "text-warning",
-      dot: "bg-warning",
-      hover: "hover:bg-warning/10",
+      icon: Users,
     },
     {
       label: "Active",
       value: "active",
       count: activeCount,
       color: "text-primary",
-      dot: "bg-primary",
-      hover: "hover:bg-primary/10",
+      icon: Activity,
     },
     {
       label: "Submitted",
       value: "submitted",
       count: submittedCount,
       color: "text-success",
-      dot: "bg-success",
-      hover: "hover:bg-success/10",
+      icon: UserCheck,
     },
     {
-      label: "Questions",
+      label: "Pool",
       value: null as string | null,
       count: exam.questionsCount || 0,
-      color: "text-accent",
-      dot: "bg-accent",
-      hover: "",
+      color: "text-muted-foreground",
+      icon: Database,
     },
   ];
 
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-      <div>
-        <div className="flex items-center gap-3 mb-1">
+    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-10 gap-6">
+      <div className="space-y-1">
+        <div className="flex items-center gap-4">
           <Link
             href="/admin"
-            className="text-muted-foreground hover:text-foreground transition-colors mr-2"
+            className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
+            <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1
-            className="text-2xl sm:text-3xl font-bold text-foreground line-clamp-1 max-w-full md:max-w-[400px]"
-            title={exam.title}
-          >
-            {exam.title}
-          </h1>
-          <span
-            className={`text-xs px-3 py-1 rounded-lg border ${STATUS_COLORS[exam.status] || "border-border"}`}
-          >
-            {exam.status.replace("_", " ")}
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">{exam.title}</h1>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border ${
+              exam.status === "waiting" ? "bg-warning/10 border-warning/20 text-warning" :
+              exam.status === "in_progress" ? "bg-primary/10 border-primary/20 text-primary" :
+              exam.status === "closed" ? "bg-success/10 border-success/20 text-success" :
+              "border-border text-muted-foreground"
+            }`}>
+              {exam.status.replace("_", " ")}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 ml-12">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Access Code</span>
+          <span className="text-sm font-mono font-bold text-primary tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+            {exam.exam_code}
           </span>
         </div>
-        <p className="text-sm text-muted-foreground font-mono ml-10">
-          Code:{" "}
-          <span className="text-accent font-bold">{exam.exam_code}</span>
-        </p>
       </div>
 
-      {/* Compact Metrics Bar with Filters */}
-      <div className="flex flex-wrap items-center gap-1 glass-card px-2 py-2 rounded-2xl w-full md:w-auto">
-        {metrics.map((s, i) => {
-          const isClickable = s.value !== null;
-          const isActive = statusFilter === s.value;
+      <div className="flex items-center gap-1.5 p-1.5 bg-muted/30 border border-border rounded-xl">
+        {metrics.map((m, i) => {
+          const Icon = m.icon;
+          const isFilterable = m.value !== null;
+          const isActive = statusFilter === m.value;
 
           return (
-            <div key={s.label} className="flex items-center">
-              {isClickable ? (
+            <div key={m.label} className="flex items-center gap-1.5">
+              {isFilterable ? (
                 <button
-                  onClick={() =>
-                    onStatusFilterChange(isActive ? null : s.value)
-                  }
-                  aria-label={`Filter by ${s.label}`}
-                  aria-pressed={isActive}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all cursor-pointer focus:outline-none ${s.hover} ${isActive ? "bg-muted/10 ring-1 ring-border shadow-sm" : "bg-transparent"}`}
+                  onClick={() => onStatusFilterChange(isActive ? null : m.value)}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
+                    isActive 
+                      ? "bg-background shadow-sm ring-1 ring-border" 
+                      : "hover:bg-background/50"
+                  }`}
                 >
-                  <span
-                    className={`w-2 h-2 rounded-full ${s.dot} ${s.label === "Active" && s.count > 0 ? "animate-pulse" : ""}`}
-                  ></span>
-                  <span className="text-sm font-medium text-foreground">
-                    {s.label}
-                  </span>
-                  <span className={`text-sm font-bold ${s.color}`}>
-                    {s.count}
-                  </span>
+                  <Icon className={`w-4 h-4 ${isActive ? m.color : "text-muted-foreground group-hover:text-foreground"}`} />
+                  <div className="text-left leading-none">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5">{m.label}</p>
+                    <p className={`text-sm font-bold ${isActive ? m.color : "text-foreground"}`}>{m.count}</p>
+                  </div>
                 </button>
               ) : (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-transparent select-none">
-                  <span className={`w-2 h-2 rounded-full ${s.dot}`}></span>
-                  <span className="text-sm font-medium text-foreground">
-                    {s.label}
-                  </span>
-                  <span className={`text-sm font-bold ${s.color}`}>
-                    {s.count}
-                  </span>
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <Icon className="w-4 h-4 text-muted-foreground" />
+                  <div className="text-left leading-none">
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5">{m.label}</p>
+                    <p className="text-sm font-bold text-foreground">{m.count}</p>
+                  </div>
                 </div>
               )}
-              {i < 3 && <div className="w-px h-6 bg-border mx-1"></div>}
+              {i < metrics.length - 1 && <div className="w-px h-6 bg-border mx-1" />}
             </div>
           );
         })}

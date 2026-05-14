@@ -1,10 +1,33 @@
 "use client";
 
+/**
+ * REDESIGN SUMMARY:
+ * - Implemented collapsible LEFT SIDEBAR with premium aesthetics.
+ * - Grouped navigation into logical sections (Management, People).
+ * - Switched to Lucide icons for consistency.
+ * - Active state now uses background tint + 4px bold left border.
+ * - Added a search placeholder for Cmd+K functionality.
+ */
+
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/browser";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  LayoutDashboard,
+  Activity,
+  PlusCircle,
+  Database,
+  Settings2,
+  Users,
+  LogOut,
+  ChevronLeft,
+  Menu,
+  X,
+  Search,
+  Command,
+} from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -16,6 +39,29 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Global shortcut for search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setSidebarOpen(false);
+  }, [pathname]);
+
   if (pathname === "/admin/login") {
     return <>{children}</>;
   }
@@ -26,277 +72,318 @@ export default function AdminLayout({
     router.push("/admin/login");
   };
 
-  const isLocalDB =
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("localhost") ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("127.0.0.1");
+  const navGroups = [
+    {
+      title: "Core",
+      items: [
+        {
+          href: "/admin",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+          exact: true,
+        },
+      ],
+    },
+    {
+      title: "Exam Management",
+      items: [
+        {
+          href: "/admin/live",
+          label: "Live Monitor",
+          icon: Activity,
+          exact: true,
+        },
+        {
+          href: "/admin/exams/new",
+          label: "Create Exam",
+          icon: PlusCircle,
+          exact: true,
+        },
+        {
+          href: "/admin/questions",
+          label: "Question Bank",
+          icon: Database,
+          exact: true,
+        },
+        {
+          href: "/admin/controls",
+          label: "Exam Controls",
+          icon: Settings2,
+          exact: true,
+        },
+      ],
+    },
+    {
+      title: "People",
+      items: [
+        {
+          href: "/admin/students",
+          label: "Students",
+          icon: Users,
+          exact: true,
+        },
+      ],
+    },
+  ];
 
-  const navLinks = [
-    {
-      href: "/admin",
-      label: "Dashboard",
-      icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
-      exact: true,
-    },
-    {
-      href: "/admin/live",
-      label: "Live Monitor",
-      icon: "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
-      iconExtra:
-        "M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
-      exact: true,
-    },
-    {
-      href: "/admin/exams/new",
-      label: "Create Exam",
-      icon: "M12 4v16m8-8H4",
-      exact: true,
-    },
-    {
-      href: "/admin/questions",
-      label: "Question Bank",
-      icon: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0114 0z",
-      exact: true,
-    },
-    {
-      href: "/admin/controls",
-      label: "Exam Controls",
-      icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z",
-      iconExtra: "M15 12a3 3 0 11-6 0 3 3 0 016 0z",
-      exact: true,
-    },
-    {
-      href: "/admin/students",
-      label: "Students",
-      icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z",
-      exact: true,
-    },
+  // Mobile Bottom Nav Items (max 6)
+  const mobileNavItems = [
+    { href: "/admin", label: "Home", icon: LayoutDashboard },
+    { href: "/admin/live", label: "Live", icon: Activity },
+    { href: "/admin/exams/new", label: "Create", icon: PlusCircle },
+    { href: "/admin/questions", label: "Bank", icon: Database },
+    { href: "/admin/students", label: "Users", icon: Users },
   ];
 
   const isActive = (href: string, exact: boolean) =>
     exact ? pathname === href : pathname.startsWith(href);
 
-  const toggleDesktopSidebar = () => {
-    setSidebarCollapsed((prev) => !prev);
-  };
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row text-foreground">
+      {/* Mobile Backdrop */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden animate-fade-in"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
+      {/* Sidebar (Desktop) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 border-r border-border bg-card/95 backdrop-blur-md flex flex-col overflow-y-auto transform transition-all duration-300 ${
-          sidebarCollapsed ? "lg:w-20 lg:px-3" : "lg:w-64 lg:px-6"
-        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} w-64 px-6 py-6 lg:translate-x-0`}
+        className={`fixed inset-y-0 left-0 z-50 border-r border-border bg-card hidden lg:flex flex-col transition-all duration-300 ease-in-out ${
+          sidebarCollapsed ? "w-20" : "w-64"
+        }`}
       >
-        <button
-          onClick={toggleDesktopSidebar}
-          className={`hidden lg:inline-flex absolute top-1/2 z-10 h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-sm transition-all hover:bg-card-hover hover:text-foreground ${
-            sidebarCollapsed ? "left-1/2 -translate-x-1/2" : "right-2"
-          }`}
-          aria-label={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
-          title={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
-        >
-          <svg
-            aria-hidden="true"
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {sidebarCollapsed ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
+        {/* Sidebar Header */}
+        <div className="h-16 flex items-center px-6 border-b border-border mb-6">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold text-sm">N</span>
+            </div>
+            {!sidebarCollapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-bold truncate">Nxt-Quiz</span>
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+                  Admin Portal
+                </span>
+              </div>
             )}
-          </svg>
-        </button>
-
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-danger to-warning flex items-center justify-center">
-              <span className="text-white font-bold">A</span>
-            </div>
-            <div className={sidebarCollapsed ? "hidden lg:hidden" : ""}>
-              <h1 className="text-sm font-bold text-foreground">
-                Admin Portal
-              </h1>
-              <p className="text-xs text-muted">Nxt-Quiz</p>
-            </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 text-muted-foreground hover:text-foreground"
-              aria-label="Close sidebar"
-            >
-              <svg
-                aria-hidden="true"
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
         </div>
 
-        {isLocalDB && !sidebarCollapsed && (
-          <div className="mb-6 px-3 py-2 rounded-lg bg-warning/10 border border-warning/20 flex items-center justify-center gap-2 text-warning text-[10px] font-bold uppercase tracking-widest">
-            <svg
-              aria-hidden="true"
-              className="w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-              />
-            </svg>
-            Local Database
-          </div>
-        )}
+        {/* Navigation */}
+        <nav className="flex-1 px-3 space-y-8 overflow-y-auto custom-scrollbar">
+          {navGroups.map((group) => (
+            <div key={group.title}>
+              {!sidebarCollapsed && (
+                <p className="px-3 mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.1em]">
+                  {group.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {group.items.map((link) => {
+                  const active = isActive(link.href, link.exact);
+                  const Icon = link.icon;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className={`flex items-center group relative h-10 px-3 rounded-md transition-all duration-200 ${
+                        active
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:text-foreground hover:bg-card-hover"
+                      }`}
+                    >
+                      {/* Active Indicator Border */}
+                      {active && (
+                        <div className="absolute left-0 top-2 bottom-2 w-1 bg-primary rounded-r-full" />
+                      )}
 
-        <nav className="space-y-1 flex-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center py-2.5 rounded-xl text-sm font-medium transition-all ${
-                sidebarCollapsed ? "justify-center px-2" : "gap-3 px-4"
-              } ${
-                isActive(link.href, link.exact)
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card-hover"
-              }`}
-              title={sidebarCollapsed ? link.label : undefined}
-            >
-              <svg
-                aria-hidden="true"
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={link.icon}
-                />
-                {link.iconExtra && (
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d={link.iconExtra}
-                  />
-                )}
-              </svg>
-              <span className={sidebarCollapsed ? "hidden" : ""}>
-                {link.label}
-              </span>
-            </Link>
+                      <Icon
+                        className={`w-5 h-5 flex-shrink-0 ${active ? "text-primary" : "group-hover:text-foreground"}`}
+                      />
+
+                      {!sidebarCollapsed && (
+                        <span className="ml-3 text-sm font-medium truncate">
+                          {link.label}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div
-          className={`flex mt-2 ${
-            sidebarCollapsed
-              ? "flex-col items-center gap-2"
-              : "items-center justify-between gap-2"
-          }`}
-        >
+        {/* Sidebar Footer */}
+        <div className={`p-4 border-t border-border flex ${sidebarCollapsed ? "flex-col space-y-2 items-center" : "items-center gap-2"}`}>
+          <ThemeToggle />
           <button
             onClick={handleLogout}
-            className={`flex items-center rounded-xl text-sm font-medium text-danger hover:bg-danger/10 transition-all ${
-              sidebarCollapsed
-                ? "justify-center w-10 h-10"
-                : "flex-1 gap-3 px-4 py-2.5"
+            className={`flex items-center h-10 rounded-md text-danger hover:bg-danger/10 transition-colors px-3 ${
+              sidebarCollapsed ? "w-full justify-center" : "flex-1 gap-3"
             }`}
-            title={sidebarCollapsed ? "Logout" : undefined}
+            title="Logout"
           >
-            <svg
-              aria-hidden="true"
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            <span className={sidebarCollapsed ? "hidden" : ""}>Logout</span>
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!sidebarCollapsed && (
+              <span className="text-sm font-medium">Logout</span>
+            )}
           </button>
-          <ThemeToggle />
         </div>
+
+        {/* Centered Sidebar Toggle */}
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className="hidden lg:flex absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:text-foreground transition-all z-50 shadow-sm"
+          aria-label={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+        >
+          <ChevronLeft
+            className={`w-3 h-3 transition-transform duration-300 ${sidebarCollapsed ? "rotate-180" : ""}`}
+          />
+        </button>
       </aside>
 
+      {/* Main Content Area */}
       <div
-        className={`min-h-screen flex flex-col transition-[padding] duration-300 ${
+        className={`flex-1 flex flex-col transition-all duration-300 ease-in-out pb-20 lg:pb-0 ${
           sidebarCollapsed ? "lg:pl-20" : "lg:pl-64"
         }`}
       >
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card/50">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 text-muted-foreground hover:text-foreground"
-            aria-label="Open sidebar navigation"
-          >
-            <svg
-              aria-hidden="true"
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
-          <span className="text-sm font-bold text-foreground">
-            Nxt-Quiz Admin
-          </span>
-          <ThemeToggle />
-        </div>
 
-        <main className="flex-1 min-w-0">{children}</main>
+        {/* Page Content */}
+        <main className="flex-1 p-6 lg:p-8 animate-fade-in max-w-7xl mx-auto w-full">
+          {children}
+        </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 h-16 bg-card border-t border-border flex items-center justify-around px-2 z-50 lg:hidden">
+        {mobileNavItems.map((item) => {
+          const active = isActive(item.href, item.href === "/admin");
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors ${
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{item.label}</span>
+              {active && (
+                <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
+              )}
+            </Link>
+          );
+        })}
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="flex flex-col items-center justify-center gap-1 flex-1 h-full text-muted-foreground"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] font-medium">More</span>
+        </button>
+      </nav>
+
+      {/* Mobile Sidebar (Drawer) */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="h-16 flex items-center px-6 border-b border-border justify-between">
+          <span className="font-bold">Menu</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="p-2 text-muted-foreground"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          {navGroups
+            .flatMap((g) => g.items)
+            .map((link) => {
+              const active = isActive(link.href, link.exact);
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`flex items-center gap-3 p-3 rounded-md transition-colors ${
+                    active
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-card-hover"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{link.label}</span>
+                </Link>
+              );
+            })}
+        </nav>
+        <div className="p-4 border-t border-border flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={handleLogout}
+            className="flex-1 flex items-center justify-center gap-3 p-3 rounded-md text-danger hover:bg-danger/10 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Search Overlay */}
+      {isSearchOpen && (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+            onClick={() => setIsSearchOpen(false)}
+          />
+          <div className="relative w-full max-w-xl bg-card border border-border rounded-lg shadow-2xl animate-fade-in overflow-hidden">
+            <div className="flex items-center px-4 py-3 border-b border-border">
+              <Search className="w-5 h-5 text-muted-foreground" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search exams, questions, or students..."
+                className="flex-1 h-10 bg-transparent border-none outline-none px-3 text-base"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setIsSearchOpen(false);
+                }}
+              />
+              <div className="px-1.5 py-0.5 rounded border border-border text-[10px] text-muted-foreground font-medium">
+                ESC
+              </div>
+            </div>
+            <div className="p-4 text-center py-12">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <Search className="w-6 h-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">
+                Search results will appear here
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Start typing to see results across the platform
+              </p>
+            </div>
+            <div className="px-4 py-3 bg-muted/30 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+              <div className="flex gap-4">
+                <span>↑↓ to navigate</span>
+                <span>↵ to select</span>
+              </div>
+              <span>Results from current workspace</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -508,14 +508,14 @@ export default function Analytics({
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={exportCSV}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2"
+              className="px-5 py-2.5 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
               CSV
             </button>
             <button
               onClick={exportPDF}
-              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary-hover transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+              className="px-5 py-2.5 rounded text-sm font-bold bg-primary text-white hover:bg-primary-hover transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               PDF Report
@@ -524,7 +524,7 @@ export default function Analytics({
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 mt-6 p-1 bg-card border border-border rounded-xl w-full sm:w-fit overflow-x-auto hide-scrollbar">
+        <div className="flex items-center gap-1 mt-6 p-1 bg-card border border-border rounded w-full sm:w-fit overflow-x-auto hide-scrollbar">
           {(["overview", "questions", "students", "time"] as const).map(
             (tab) => (
               <button
@@ -553,7 +553,7 @@ export default function Analytics({
       {activeTab === "overview" && (
         <div className="space-y-8 animate-fade-in">
           {/* Compact Metrics Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-6 glass-card px-6 py-4 rounded-2xl w-full">
+          <div className="flex flex-wrap items-center justify-between gap-y-4 gap-x-6 card px-6 py-4 rounded w-full">
             {[
               { label: "Avg Score", value: `${summary.avgScore}/${summary.maxPossible}`, color: "text-primary", sub: `${summary.maxPossible > 0 ? Math.round((summary.avgScore / summary.maxPossible) * 100) : 0}%` },
               { label: "High Score", value: `${summary.highestScore}`, color: "text-success", sub: `${summary.maxPossible > 0 ? Math.round((summary.highestScore / summary.maxPossible) * 100) : 0}%` },
@@ -579,7 +579,7 @@ export default function Analytics({
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Score Distribution */}
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Score Distribution
               </h3>
@@ -620,7 +620,7 @@ export default function Analytics({
             </div>
 
             {/* Grade Distribution Pie */}
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Grade Distribution
               </h3>
@@ -668,7 +668,7 @@ export default function Analytics({
           </div>
 
           {/* Topic Performance */}
-          <div className="glass-card p-6">
+          <div className="card p-6">
             <h3 className="text-sm font-semibold text-foreground mb-4">
               Topic-wise Performance
             </h3>
@@ -729,7 +729,7 @@ export default function Analytics({
           {/* Difficulty Breakdown + Exam Health */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Difficulty */}
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Difficulty Breakdown
               </h3>
@@ -737,7 +737,7 @@ export default function Analytics({
                 {data.difficultyBreakdown.map((d) => (
                   <div
                     key={d.difficulty}
-                    className="p-4 rounded-xl bg-background border border-border"
+                    className="p-4 rounded bg-background border border-border"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span
@@ -773,7 +773,7 @@ export default function Analytics({
             </div>
 
             {/* Exam Health */}
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Exam Health Insights
               </h3>
@@ -814,7 +814,7 @@ export default function Analytics({
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="p-3 rounded-xl bg-background border border-border hover:border-border-hover transition-all"
+                    className="p-3 rounded bg-background border border-border hover:border-border-hover transition-all"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
@@ -844,7 +844,7 @@ export default function Analytics({
       {/* ═══════════════════════ TAB: QUESTIONS ═══════════════════════ */}
       {activeTab === "questions" && (
         <div className="space-y-6 animate-fade-in">
-          <div className="glass-card overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="p-5 border-b border-border flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-sm font-semibold text-foreground">
                 Question-by-Question Analysis ({data.detailedQuestions.length})
@@ -966,7 +966,7 @@ export default function Analytics({
                                 <p className="text-xs font-bold text-foreground mb-2">
                                   Full Question
                                 </p>
-                                <p className="text-sm text-foreground bg-background p-3 rounded-xl border border-border">
+                                <p className="text-sm text-foreground bg-background p-3 rounded border border-border">
                                   {q.questionText}
                                 </p>
                                 {q.codeSnippet && (
@@ -1008,7 +1008,7 @@ export default function Analytics({
                                     )}
                                 </div>
                                 {q.explanation && (
-                                  <div className="mt-3 p-3 rounded-xl bg-primary/5 border border-primary/10 text-xs text-muted-foreground">
+                                  <div className="mt-3 p-3 rounded bg-primary/5 border border-primary/10 text-xs text-muted-foreground">
                                     <span className="font-bold text-primary">
                                       Explanation:
                                     </span>{" "}
@@ -1059,7 +1059,7 @@ export default function Analytics({
                                             </div>
                                             {students.length > 0 && (
                                               <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/bar:block">
-                                                <div className="bg-foreground text-background text-[10px] rounded-lg px-3 py-2 shadow-xl max-w-[220px] max-h-[160px] overflow-y-auto">
+                                                <div className="bg-foreground text-background text-[10px] rounded-lg px-3 py-2 max-w-[220px] max-h-[160px] overflow-y-auto">
                                                   <p className="font-bold mb-1 border-b border-background/20 pb-1">
                                                     {students.length} student{students.length !== 1 ? "s" : ""}
                                                   </p>
@@ -1125,7 +1125,7 @@ export default function Analytics({
       {/* ═══════════════════════ TAB: STUDENTS ═══════════════════════ */}
       {activeTab === "students" && (
         <div className="space-y-6 animate-fade-in">
-          <div className="glass-card overflow-hidden">
+          <div className="card overflow-hidden">
             <div className="p-5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-foreground">
                 Student Leaderboard ({data.studentResults.length} submitted)
@@ -1136,11 +1136,11 @@ export default function Analytics({
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
                   placeholder="Search name, email, or ID..."
-                  className="px-4 py-2 rounded-xl bg-background border border-border text-foreground text-sm placeholder:text-muted focus:outline-none focus:border-primary transition-all w-full sm:w-64"
+                  className="px-4 py-2 rounded bg-background border border-border text-foreground text-sm placeholder:text-muted focus:outline-none focus:border-primary transition-all w-full sm:w-64"
                 />
                 <button
                   onClick={exportCSV}
-                  className="px-3 py-2 rounded-xl text-xs font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+                  className="px-3 py-2 rounded text-xs font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
                 >
                   CSV ↓
                 </button>
@@ -1298,7 +1298,7 @@ export default function Analytics({
                 color: "warning",
               },
             ].map((s) => (
-              <div key={s.label} className="glass-card p-4 text-center">
+              <div key={s.label} className="card p-4 text-center">
                 <p className={`text-lg font-bold text-${s.color}`}>{s.value}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wider font-semibold">
                   {s.label}
@@ -1308,12 +1308,12 @@ export default function Analytics({
           </div>
 
           {/* Time Distribution */}
-          <div className="glass-card p-6">
+          <div className="card p-6">
             <h3 className="text-sm font-semibold text-foreground mb-4">
               Submission Timing Breakdown
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-5 rounded-xl bg-success/5 border border-success/10 text-center">
+              <div className="p-5 rounded bg-success/5 border border-success/10 text-center">
                 <p className="text-3xl font-bold text-success">
                   {timeAnalytics.earlySubmissions}
                 </p>
@@ -1324,7 +1324,7 @@ export default function Analytics({
                   Under 50% of allowed time
                 </p>
               </div>
-              <div className="p-5 rounded-xl bg-primary/5 border border-primary/10 text-center">
+              <div className="p-5 rounded bg-primary/5 border border-primary/10 text-center">
                 <p className="text-3xl font-bold text-primary">
                   {timeAnalytics.onTimeSubmissions}
                 </p>
@@ -1335,7 +1335,7 @@ export default function Analytics({
                   50% – 90% of allowed time
                 </p>
               </div>
-              <div className="p-5 rounded-xl bg-warning/5 border border-warning/10 text-center">
+              <div className="p-5 rounded bg-warning/5 border border-warning/10 text-center">
                 <p className="text-3xl font-bold text-warning">
                   {timeAnalytics.lateSubmissions}
                 </p>
@@ -1351,7 +1351,7 @@ export default function Analytics({
 
           {/* Fastest & slowest students */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Fastest Submitters (Top 5)
               </h3>
@@ -1367,7 +1367,7 @@ export default function Analytics({
                   .map((s, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-3 rounded-xl bg-background border border-border"
+                      className="flex items-center justify-between p-3 rounded bg-background border border-border"
                     >
                       <div className="flex items-center gap-3">
                         <span
@@ -1403,7 +1403,7 @@ export default function Analytics({
                 )}
               </div>
             </div>
-            <div className="glass-card p-6">
+            <div className="card p-6">
               <h3 className="text-sm font-semibold text-foreground mb-4">
                 Slowest Submitters (Top 5)
               </h3>
@@ -1419,7 +1419,7 @@ export default function Analytics({
                   .map((s, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-3 rounded-xl bg-background border border-border"
+                      className="flex items-center justify-between p-3 rounded bg-background border border-border"
                     >
                       <div className="flex items-center gap-3">
                         <span

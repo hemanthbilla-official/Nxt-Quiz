@@ -27,34 +27,17 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <FloatingThemeToggle />
-      <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden glass-card p-8 relative">
-        {/* Logo / Brand */}
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary mb-4 glow-primary">
-            <svg
-              className="w-8 h-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold gradient-text mb-2">Nxt-Quiz</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-1">Nxt-Quiz</h1>
           <p className="text-muted-foreground text-sm">
             Sign in with your Google account to begin
           </p>
         </div>
 
-        {/* Card */}
-        <div className="glass-card p-8">
+        <div className="card p-8">
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
+            <div className="mb-6 p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
               {error}
             </div>
           )}
@@ -62,7 +45,7 @@ export default function Login() {
           <button
             onClick={signInWithGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-card hover:bg-card-hover text-foreground font-semibold py-3.5 px-6 rounded-xl transition-all duration-200 ease-out hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg border border-border/50"
+            className="w-full flex items-center justify-center gap-3 bg-card hover:bg-card-hover text-foreground font-medium py-3 px-6 rounded border border-border hover:border-border-hover transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -94,18 +77,15 @@ export default function Login() {
             )}
           </button>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-muted">
-              By signing in, you agree to participate in the assessment
-            </p>
-          </div>
+          <p className="mt-6 text-center text-xs text-muted">
+            By signing in, you agree to participate in the assessment
+          </p>
         </div>
 
-        {/* Admin link */}
         <div className="mt-6 text-center">
           <a
             href="/admin/login"
-            className="text-xs text-muted hover:text-primary transition-colors"
+            className="text-xs text-muted hover:text-primary transition-colors duration-150"
           >
             Admin Portal →
           </a>

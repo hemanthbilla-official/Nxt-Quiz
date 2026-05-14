@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { 
+  Search, 
+  PlusCircle, 
+  ChevronDown, 
+  Edit2, 
+  Trash2, 
+  Database, 
+  X 
+} from "lucide-react";
 
 interface Option {
   id: string;
@@ -202,7 +211,7 @@ export default function QuestionBank() {
     downloadFile(deduped, filename);
   };
 
-  const fetchQuestions = useCallback(async () => {
+  const fetchQuestionsOld = useCallback(async () => {
     const res = await fetch("/api/admin/questions");
     if (res.ok) {
       const data = await res.json();
@@ -212,8 +221,8 @@ export default function QuestionBank() {
   }, []);
 
   useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions]);
+    fetchQuestionsOld();
+  }, [fetchQuestionsOld]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -324,543 +333,476 @@ export default function QuestionBank() {
 
   const availableExams = Object.keys(groupedQuestions).sort();
 
-  const handleDeleteSelectedSections = async () => {
-    const checkedKeys = Object.keys(selectedSections).filter((k) => selectedSections[k]);
-    if (checkedKeys.length === 0) return;
+  const [selectedQuestions, setSelectedQuestions] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-    if (!confirm(`Are you sure you want to delete all questions in the ${checkedKeys.length} selected section(s)? This action cannot be undone.`)) return;
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
-    const questionsToDelete: string[] = [];
-    checkedKeys.forEach((section) => {
-      (groupedQuestions[section] || []).forEach((q) => {
-        questionsToDelete.push(q.id);
-      });
-    });
+  const toggleQuestionSelection = (id: string) => {
+    setSelectedQuestions(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
-    if (questionsToDelete.length === 0) return;
+  const toggleAllQuestionsInSection = (examName: string, qs: Question[]) => {
+    const sectionQs = qs.map(q => q.id);
+    const allSelected = sectionQs.every(id => selectedQuestions[id]);
+    const next = { ...selectedQuestions };
+    sectionQs.forEach(id => next[id] = !allSelected);
+    setSelectedQuestions(next);
+  };
 
-    setIsDeletingSections(true);
+  const selectedCount = Object.values(selectedQuestions).filter(Boolean).length;
+
+  const handleBulkDelete = async () => {
+    const ids = Object.keys(selectedQuestions).filter(id => selectedQuestions[id]);
+    if (ids.length === 0) return;
+    
+    setSubmitting(true);
     try {
       const res = await fetch("/api/admin/questions/bulk-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionIds: questionsToDelete }),
+        body: JSON.stringify({ questionIds: ids }),
       });
-      
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || "Failed to delete questions");
-      } else {
-        setSelectedSections({});
+      if (res.ok) {
+        showToast(`Successfully deleted ${ids.length} questions`);
+        setSelectedQuestions({});
         await fetchQuestions();
+      } else {
+        showToast("Failed to delete questions", "error");
       }
-    } catch (e) {
-      alert("An error occurred while deleting.");
+    } catch (err) {
+      showToast("An error occurred", "error");
     } finally {
-      setIsDeletingSections(false);
+      setSubmitting(false);
     }
   };
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const handleDeleteConfirmed = async (id: string) => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        showToast("Question deleted");
+        await fetchQuestions();
+      } else {
+        showToast("Delete failed", "error");
+      }
+    } catch (err) {
+      showToast("An error occurred", "error");
+    } finally {
+      setSubmitting(false);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const fetchQuestions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/questions");
+      if (res.ok) {
+        const data = await res.json();
+        setQuestions(data.questions || []);
+      }
+    } catch (err) {
+      showToast("Failed to load questions", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchQuestions();
+  }, [fetchQuestions]);
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="spinner h-8 w-8" />
       </div>
     );
   }
 
+  const visibleEntries = selectedExamName === "All"
+    ? Object.entries(groupedQuestions)
+    : Object.entries(groupedQuestions).filter(([n]) => n === selectedExamName);
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Question Bank</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {questions.length} questions available
-          </p>
+    <div className="space-y-6 pb-20 relative">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[100] px-4 py-2 rounded-md shadow-lg border animate-fade-in ${
+          toast.type === "success" ? "bg-success/10 border-success text-success" : "bg-danger/10 border-danger text-danger"
+        }`}>
+          {toast.message}
         </div>
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
-          <button
-            onClick={() => {
-              setEditingId(null);
-              setShowAdd(true);
-            }}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold bg-primary text-white hover:bg-primary-hover transition-all shadow-sm flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Add Question
-          </button>
+      )}
+
+      {/* Floating Bulk Actions */}
+      {selectedCount > 0 && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-fade-in">
+          <div className="bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-border/10">
+            <span className="text-sm font-bold">{selectedCount} questions selected</span>
+            <div className="h-4 w-px bg-background/20" />
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleBulkDelete}
+                disabled={submitting}
+                className="text-sm font-bold text-danger hover:text-danger/80 disabled:opacity-50"
+              >
+                Delete Selected
+              </button>
+              <button 
+                onClick={() => setSelectedQuestions({})}
+                className="text-sm font-bold hover:opacity-80"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Question Bank</h1>
+          <p className="text-sm text-muted-foreground">Manage assessment content across all exams</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative group max-w-xs w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <input
+              type="text"
+              placeholder="Search questions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+            />
+          </div>
+          
           <select
             value={selectedExamName}
             onChange={(e) => setSelectedExamName(e.target.value)}
-            className="px-4 py-2.5 rounded-xl bg-background border border-border text-sm font-semibold focus:outline-none focus:border-primary transition-all w-full sm:w-64 shadow-sm"
+            className="h-10 px-3 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
           >
             <option value="All">All Exams</option>
-            {availableExams.map((exam) => (
-              <option key={exam} value={exam}>
-                {exam}
-              </option>
+            {availableExams.map(exam => (
+              <option key={exam} value={exam}>{exam}</option>
             ))}
           </select>
-          <input
-            type="text"
-            placeholder="Search questions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-4 py-2.5 rounded-xl bg-background border border-border text-sm w-full sm:w-48 focus:outline-none focus:border-primary transition-all shadow-sm"
-          />
+
           <button
-            onClick={() => handleDownloadQuestions(groupedQuestions)}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-card text-foreground border border-border hover:bg-card-hover transition-all flex items-center gap-2 shadow-sm"
-            title={Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0 ? "Download selected sections" : "Download all questions"}
+            onClick={() => { setEditingId(null); setShowAdd(true); }}
+            className="btn-primary h-10 flex items-center gap-2"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            {Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0
-              ? `Export ${Object.keys(selectedSections).filter((k) => selectedSections[k]).length} Section(s)`
-              : "Export JSON"}
+            <PlusCircle className="w-4 h-4" />
+            <span>Add Question</span>
           </button>
-          <button
-            onClick={handleDeleteSelectedSections}
-            disabled={Object.keys(selectedSections).filter((k) => selectedSections[k]).length === 0 || isDeletingSections}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 shadow-sm ${
-              Object.keys(selectedSections).filter((k) => selectedSections[k]).length > 0 && !isDeletingSections
-                ? "bg-danger text-white border-danger hover:bg-danger-hover"
-                : "bg-card text-muted-foreground border-border opacity-50 cursor-not-allowed"
-            }`}
-            title="Delete selected sections"
-          >
-            {isDeletingSections ? (
-               <>
-                 <div className="spinner" style={{ width: 14, height: 14, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: 'white' }} />
-                 Deleting...
-               </>
-            ) : (
-               <>
-                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                 </svg>
-                 Delete Selected
-               </>
-            )}
-          </button>
-          <button
-            onClick={handleDownloadTemplate}
-            className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-card border border-border text-muted-foreground hover:bg-card-hover hover:text-foreground transition-all flex items-center gap-2 shadow-sm"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-              />
-            </svg>
-            Template
-          </button>
-          {questions.length > 0 && process.env.NEXT_PUBLIC_ENVIRONMENT === "local" && (
-            <button
-              onClick={handleHardReset}
-              disabled={isDeletingAll}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-danger hover:bg-danger/10 border border-danger/20 transition-all flex items-center gap-2 shadow-sm"
-            >
-              {isDeletingAll ? (
-                <>
-                  <div className="spinner" style={{ width: 12, height: 12 }} />
-                  Wiping...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  Hard Reset
-                </>
-              )}
-            </button>
-          )}
         </div>
       </div>
 
-      <div className="space-y-8">
-        {(() => {
-          const visibleEntries = selectedExamName === "All"
-            ? Object.keys(groupedQuestions)
-            : Object.keys(groupedQuestions).filter((n) => n === selectedExamName);
-          if (visibleEntries.length <= 1) return null;
-          const allChecked = visibleEntries.every((s) => selectedSections[s]);
+      <div className="space-y-6">
+        {visibleEntries.map(([examName, qs]) => {
+          const isOpen = openSections[examName] ?? false;
+          const sectionQs = qs.map(q => q.id);
+          const allInSectionSelected = sectionQs.length > 0 && sectionQs.every(id => selectedQuestions[id]);
+
           return (
-            <div className="flex items-center gap-3 mb-2">
-              <button
-                onClick={() => toggleAllSections(visibleEntries)}
-                className="text-xs font-semibold text-primary hover:underline transition-all"
+            <div key={examName} className="card overflow-hidden">
+              <div 
+                className="p-4 bg-card-hover/50 flex items-center gap-4 cursor-pointer select-none"
+                onClick={() => toggleSection(examName)}
               >
-                {allChecked ? "Deselect All" : "Select All Sections"}
-              </button>
-              <span className="text-xs text-muted-foreground">
-                {Object.keys(selectedSections).filter((k) => selectedSections[k]).length} selected
-              </span>
-            </div>
-          );
-        })()}
-        {(selectedExamName === "All"
-              ? Object.entries(groupedQuestions)
-              : Object.entries(groupedQuestions).filter(
-                  ([examName]) => examName === selectedExamName,
-                )
-            ).map(([examName, qs]) => {
-              const isOpen = openSections[examName] ?? false;
-              const isChecked = !!selectedSections[examName];
-              return (
-              <div
-                key={examName}
-                className="glass-card overflow-hidden animate-fade-in shadow-sm border border-border"
-              >
-                <div
-                  className="bg-card-hover px-4 sm:px-6 py-4 border-b border-border flex items-center gap-3 cursor-pointer select-none group"
-                  onClick={() => toggleSection(examName)}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={(e) => { e.stopPropagation(); toggleSectionCheckbox(examName); }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary shrink-0 cursor-pointer accent-[var(--primary)]"
-                    title="Select for download"
-                  />
-                  <svg
-                    className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                  <h2 className="text-sm font-bold text-foreground break-words flex-1">
-                    {examName}
-                  </h2>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 shrink-0">
-                    {qs.length} Question{qs.length !== 1 ? "s" : ""}
-                  </span>
+                <input
+                  type="checkbox"
+                  checked={allInSectionSelected}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    toggleAllQuestionsInSection(examName, qs);
+                  }}
+                  className="w-4 h-4 rounded border-border"
+                  onClick={e => e.stopPropagation()}
+                />
+                <div className={`transition-transform ${isOpen ? "rotate-0" : "-rotate-90"}`}>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </div>
-                {isOpen && (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[680px] text-sm text-left">
-                    <thead className="bg-card/30">
-                      <tr className="border-b border-border/50">
-                        <th className="p-4 text-muted-foreground font-medium w-1/2">
-                          Question
-                        </th>
-                        <th className="p-4 text-muted-foreground font-medium">
-                          Topic
-                        </th>
-                        <th className="p-4 text-muted-foreground font-medium">
-                          Difficulty
-                        </th>
-                        <th className="p-4 text-muted-foreground font-medium text-right">
-                          Actions
-                        </th>
+                <h2 className="flex-1 font-bold text-sm">{examName}</h2>
+                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider">
+                  {qs.length} Questions
+                </span>
+              </div>
+              
+              {isOpen && (
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto custom-scrollbar sticky-table">
+                  <table className="w-full text-sm">
+                    <thead className="bg-card border-b border-border sticky top-0 z-10">
+                      <tr>
+                        <th className="p-4 w-10"></th>
+                        <th className="p-4 text-left font-medium text-muted-foreground">Question</th>
+                        <th className="p-4 text-left font-medium text-muted-foreground">Topic</th>
+                        <th className="p-4 text-left font-medium text-muted-foreground">Difficulty</th>
+                        <th className="p-4 text-right font-medium text-muted-foreground">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {qs.map((q) => (
-                        <tr
-                          key={q.id}
-                          className="border-b border-border/30 hover:bg-card-hover transition-colors"
-                        >
-                          <td className="p-4">
-                            <p className="text-foreground font-medium line-clamp-1">
-                              {q.question}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground mt-1 font-mono tracking-wide">
-                              {q.id}
-                            </p>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-xs px-2 py-1 rounded-lg bg-border/50 text-muted-foreground font-medium tracking-wide">
-                              {q.topic}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg ${q.difficulty === "Intermediate" ? "bg-warning/10 text-warning" : "bg-success/10 text-success"}`}
-                            >
-                              {q.difficulty}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => handleEdit(q)}
-                                className="p-2 bg-background border border-border rounded-lg text-muted-foreground hover:text-primary hover:border-primary/50 transition-all"
-                                title="Edit"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M11 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-5M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-                                  />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={() => handleDelete(q.id)}
-                                className="p-2 bg-background border border-border rounded-lg text-muted-foreground hover:text-danger hover:border-danger/50 hover:bg-danger/5 transition-all"
-                                title="Delete"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {qs.map((q) => {
+                        const isSelected = !!selectedQuestions[q.id];
+                        const isConfirmingDelete = deleteConfirmId === q.id;
+                        return (
+                          <tr 
+                            key={q.id} 
+                            className={`border-b border-border/50 hover:bg-card-hover transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+                          >
+                            <td className="p-4">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleQuestionSelection(q.id)}
+                                className="w-4 h-4 rounded border-border"
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="max-w-md">
+                                <p className="font-medium text-foreground line-clamp-1">{q.question}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase tracking-tighter opacity-60">
+                                  {q.id}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="p-4">
+                              <span className="text-xs px-2 py-0.5 bg-muted rounded border border-border text-muted-foreground">
+                                {q.topic}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                q.difficulty === "Basic" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                              }`}>
+                                {q.difficulty}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {isConfirmingDelete ? (
+                                  <div className="flex items-center gap-1.5 animate-fade-in">
+                                    <button 
+                                      onClick={() => handleDeleteConfirmed(q.id)}
+                                      className="text-[10px] font-bold text-danger hover:underline"
+                                    >
+                                      Confirm
+                                    </button>
+                                    <button 
+                                      onClick={() => setDeleteConfirmId(null)}
+                                      className="text-[10px] font-bold text-muted-foreground hover:underline"
+                                    >
+                                      No
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleEdit(q)}
+                                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setDeleteConfirmId(q.id)}
+                                      className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-md transition-colors"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                )}
-              </div>
-              );
-            })}
+              )}
+            </div>
+          );
+        })}
 
-        {Object.keys(groupedQuestions).length === 0 && (
-          <div className="glass-card p-12 text-center border-border">
-            <svg
-              className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
-            <h3 className="text-lg font-bold text-foreground">
-              No Questions Found
-            </h3>
-            <p className="text-muted-foreground text-sm mt-1">
-              Add some questions to populate the databanks.
+        {visibleEntries.length === 0 && (
+          <div className="p-20 text-center flex flex-col items-center justify-center border-2 border-dashed border-border rounded-xl">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Database className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="text-xl font-bold">
+              {search ? `No questions matching "${search}"` : "The question bank is empty"}
+            </h2>
+            <p className="text-muted-foreground max-w-sm mt-2">
+              {search ? "Try searching for a different term or clear the filter." : "Start by adding your first question or importing a question set."}
             </p>
+            {search && (
+              <button 
+                onClick={() => setSearch("")}
+                className="mt-6 btn-secondary"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
         )}
       </div>
 
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="glass-card p-6 sm:p-8 w-full max-w-2xl my-8 animate-slide-up">
-            <h2 className="text-xl font-bold text-foreground mb-6">
-              {editingId ? "Edit Question" : "Add New Question"}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Topic
-                  </label>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" 
+            onClick={() => setShowAdd(false)}
+          />
+          <div className="relative w-full max-w-3xl bg-card border border-border rounded-xl shadow-2xl animate-fade-in max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h2 className="text-xl font-bold">
+                {editingId ? "Edit Question" : "Add Question"}
+              </h2>
+              <button onClick={() => setShowAdd(false)} className="p-2 text-muted-foreground hover:text-foreground">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Topic</label>
                   <input
+                    required
                     type="text"
                     value={form.topic}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, topic: e.target.value }))
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
-                    required
+                    onChange={e => setForm(prev => ({ ...prev, topic: e.target.value }))}
+                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Difficulty
-                  </label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Difficulty</label>
                   <select
                     value={form.difficulty}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        difficulty: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
+                    onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))}
+                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   >
                     <option value="Basic">Basic</option>
                     <option value="Intermediate">Intermediate</option>
+                    <option value="Advanced">Advanced</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Question Type
-                  </label>
-                  <select
-                    value={form.question_type}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        question_type: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
-                  >
-                    <option value="theory">Theory</option>
-                    <option value="code-output">Code Output</option>
-                  </select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Question Type</label>
+                <div className="flex gap-4">
+                  {["theory", "code-output", "programming"].map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, question_type: type }))}
+                      className={`px-4 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all ${
+                        form.question_type === type 
+                          ? "bg-primary/10 border-primary text-primary" 
+                          : "border-border text-muted-foreground hover:border-muted"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {form.question_type === "code-output" && (
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Code Snippet
-                  </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Question Body</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={form.question}
+                  onChange={e => setForm(prev => ({ ...prev, question: e.target.value }))}
+                  className="w-full p-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                  placeholder="Enter the question text..."
+                />
+              </div>
+
+              {(form.question_type === "code-output" || form.question_type === "programming") && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Code Snippet</label>
                   <textarea
+                    rows={6}
                     value={form.code_snippet || ""}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        code_snippet: e.target.value,
-                      }))
-                    }
-                    className="w-full px-4 py-2.5 rounded-xl bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
-                    placeholder="Enter React/JSX code here..."
+                    onChange={e => setForm(prev => ({ ...prev, code_snippet: e.target.value }))}
+                    className="w-full p-4 bg-muted/50 border border-border rounded-md font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                    placeholder="// Enter code here..."
                   />
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Question Text
-                </label>
-                <textarea
-                  value={form.question}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, question: e.target.value }))
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[100px]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Options
-                </label>
-                {(form.options || []).map((opt: Option, idx: number) => (
-                  <div key={opt.id} className="flex items-center gap-3">
-                    <span
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${form.correct_option_id === opt.id ? "bg-success text-white" : "bg-border text-muted-foreground"}`}
-                    >
-                      {opt.id}
-                    </span>
-                    <input
-                      type="text"
-                      value={opt.text}
-                      onChange={(e) => {
-                        const newOpts = [...(form.options || [])];
-                        newOpts[idx].text = e.target.value;
-                        setForm((prev) => ({ ...prev, options: newOpts }));
-                      }}
-                      className="flex-1 px-4 py-2 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all text-sm"
-                      placeholder={`Option ${opt.id}...`}
-                      required
-                    />
-                    <input
-                      type="radio"
-                      name="correct"
-                      checked={form.correct_option_id === opt.id}
-                      onChange={() =>
-                        setForm((prev) => ({
-                          ...prev,
-                          correct_option_id: opt.id,
-                        }))
-                      }
-                      className="w-4 h-4 text-primary focus:ring-primary"
-                    />
+              {form.question_type !== "programming" && (
+                <div className="space-y-4">
+                  <label className="text-sm font-medium text-muted-foreground">Options</label>
+                  <div className="grid grid-cols-1 gap-3">
+                    {(form.options || []).map((opt, idx) => (
+                      <div key={opt.id} className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, correct_option_id: opt.id }))}
+                          className={`w-11 h-11 rounded-md border font-bold transition-all ${
+                            form.correct_option_id === opt.id 
+                              ? "bg-success text-white border-success" 
+                              : "border-border text-muted-foreground hover:border-muted"
+                          }`}
+                        >
+                          {opt.id}
+                        </button>
+                        <input
+                          required
+                          type="text"
+                          value={opt.text}
+                          onChange={e => {
+                            const next = [...(form.options || [])];
+                            next[idx] = { ...next[idx], text: e.target.value };
+                            setForm(prev => ({ ...prev, options: next }));
+                          }}
+                          className="flex-1 h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                          placeholder={`Option ${opt.id} text...`}
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
 
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Explanation
-                </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground">Explanation</label>
                 <textarea
+                  rows={3}
                   value={form.explanation}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      explanation: e.target.value,
-                    }))
-                  }
-                  className="w-full px-4 py-2.5 rounded-xl bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[80px]"
-                  required
+                  onChange={e => setForm(prev => ({ ...prev, explanation: e.target.value }))}
+                  className="w-full p-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                  placeholder="Explain the correct answer..."
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="pt-4 border-t border-border flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowAdd(false)}
-                  className="flex-1 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+                  className="btn-secondary flex-1 h-12"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-3 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2"
                 >
-                  {submitting ? (
-                    <>
-                      <div
-                        className="spinner"
-                        style={{
-                          width: 14,
-                          height: 14,
-                          borderTopColor: "white",
-                          borderColor: "rgba(255,255,255,0.3)",
-                        }}
-                      />
-                      {editingId ? "Saving..." : "Creating..."}
-                    </>
-                  ) : editingId ? (
-                    "Save Changes"
-                  ) : (
-                    "Create Question"
-                  )}
+                  {submitting && <div className="spinner h-4 w-4 border-white border-t-transparent" />}
+                  {editingId ? "Update Question" : "Save Question"}
                 </button>
               </div>
             </form>

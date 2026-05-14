@@ -350,7 +350,7 @@ export default function ReviewExam({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-lg border-b border-border px-4 sm:px-6 py-3">
+      <header className="sticky top-0 z-50 bg-card/90 border-b border-border px-4 sm:px-6 py-3">
         <div className="max-w-4xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-lg font-semibold text-foreground">
             Review & Submit
@@ -359,7 +359,7 @@ export default function ReviewExam({
             {controls.themeToggleEnabled && <ThemeToggle />}
             {timeLeft !== null && (
               <div
-                className={`px-4 py-2 rounded-xl font-mono font-bold text-lg ${
+                className={`px-4 py-2 rounded font-mono font-bold text-lg ${
                   isUrgent
                     ? "bg-danger/10 text-danger animate-timer-urgent"
                     : "bg-primary/10 text-primary"
@@ -373,15 +373,15 @@ export default function ReviewExam({
       </header>
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8 animate-slide-up">
-          <div className="glass-card p-5 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="card p-5 text-center">
             <p className="text-3xl font-bold text-success">{answered.length}</p>
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <IconCheck /> Answered
             </p>
           </div>
           {controls.skipEnabled && (
-            <div className="glass-card p-5 text-center">
+            <div className="card p-5 text-center">
               <p className="text-3xl font-bold text-warning">
                 {skipped.length}
               </p>
@@ -391,7 +391,7 @@ export default function ReviewExam({
             </div>
           )}
           {controls.bookmarksEnabled && (
-            <div className="glass-card p-5 text-center">
+            <div className="card p-5 text-center">
               <p className="text-3xl font-bold text-secondary">
                 {bookmarked.length}
               </p>
@@ -400,7 +400,7 @@ export default function ReviewExam({
               </p>
             </div>
           )}
-          <div className="glass-card p-5 text-center">
+          <div className="card p-5 text-center">
             <p className="text-3xl font-bold text-muted">{unanswered.length}</p>
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <IconQuestion /> Unanswered
@@ -409,7 +409,7 @@ export default function ReviewExam({
         </div>
 
         {unanswered.length > 0 && (
-          <div className="p-4 rounded-xl bg-warning/10 border border-warning/20 text-warning text-sm mb-6 animate-fade-in flex items-center gap-2">
+          <div className="p-4 rounded bg-warning/10 border border-warning/20 text-warning text-sm mb-6 animate-fade-in flex items-center gap-2">
             <svg
               className="w-5 h-5 flex-shrink-0"
               fill="none"
@@ -482,7 +482,7 @@ export default function ReviewExam({
                       isOpeningConfirm
                     }
                     onClick={() => handleGoToQuestion(q.id)}
-                    className="w-full text-left p-3 rounded-xl bg-card border border-border hover:border-border-hover hover:bg-card-hover transition-all text-sm disabled:opacity-70 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="w-full text-left p-3 rounded bg-card border border-border hover:border-border-hover hover:bg-card-hover transition-all text-sm disabled:opacity-70 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex min-w-0 items-center">
                       <span className="text-muted-foreground mr-2">
@@ -518,7 +518,7 @@ export default function ReviewExam({
               isOpeningConfirm ||
               navigatingToQuestion !== null
             }
-            className="px-6 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {isNavigatingBack ? (
               <div className="spinner" style={{ width: 16, height: 16 }} />
@@ -547,7 +547,7 @@ export default function ReviewExam({
               isNavigatingBack ||
               navigatingToQuestion !== null
             }
-            className="px-8 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-success to-accent text-white hover:scale-[1.02] active:scale-[0.98] transition-all glow-success flex items-center gap-2 disabled:opacity-50"
+            className="px-8 py-3 rounded text-sm font-semibold bg-success text-white transition-all  flex items-center gap-2 disabled:opacity-50"
           >
             {isOpeningConfirm ? (
               <div
@@ -578,9 +578,9 @@ export default function ReviewExam({
 
       {/* Tab Switch Warning Modal */}
       {controls.tabSwitchWarningEnabled && showTabWarning && (
-        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="glass-card p-8 max-w-md w-full text-center animate-slide-up shadow-2xl border-danger/30">
-            <div className="w-20 h-20 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-6">
+        <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4">
+          <div className="card p-8 max-w-md w-full text-center border-danger/30">
+            <div className="w-20 h-20 rounded bg-danger/10 flex items-center justify-center mx-auto mb-6">
               <svg
                 className="w-10 h-10 text-danger"
                 fill="none"
@@ -607,7 +607,7 @@ export default function ReviewExam({
             </p>
             <button
               onClick={() => setShowTabWarning(false)}
-              className="w-full py-4 rounded-2xl bg-danger text-white font-bold text-lg hover:bg-danger-hover hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-danger/20"
+              className="w-full py-4 rounded bg-danger text-white font-bold text-lg hover:bg-danger-hover transition-all"
             >
               I Understand
             </button>
@@ -617,7 +617,7 @@ export default function ReviewExam({
 
       {showConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="glass-card p-8 max-w-md w-full mx-4 animate-slide-up">
+          <div className="card p-8 max-w-md w-full mx-4">
             <h2 className="text-xl font-bold text-foreground mb-2">
               Submit Exam?
             </h2>
@@ -626,7 +626,7 @@ export default function ReviewExam({
               questions. This action cannot be undone.
             </p>
             {unanswered.length > 0 && (
-              <div className="p-3 rounded-xl bg-warning/10 border border-warning/20 text-warning text-xs mb-6 flex items-center gap-2">
+              <div className="p-3 rounded bg-warning/10 border border-warning/20 text-warning text-xs mb-6 flex items-center gap-2">
                 <svg
                   className="w-4 h-4 flex-shrink-0"
                   fill="none"
@@ -647,14 +647,14 @@ export default function ReviewExam({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 py-3 rounded-xl text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+                className="flex-1 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-success to-accent text-white hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                className="flex-1 py-3 rounded text-sm font-semibold bg-success text-white transition-all disabled:opacity-50"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">

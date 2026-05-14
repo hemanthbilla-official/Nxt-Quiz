@@ -28,7 +28,7 @@ export default function MarkdownViewer({ content, className = "" }: MarkdownView
                 {children}
               </code>
             ) : (
-              <pre className="bg-muted/30 p-4 rounded-xl overflow-x-auto my-6 border border-border">
+              <pre className="bg-muted/30 p-4 rounded overflow-x-auto my-6 border border-border">
                 <code className={className} {...props}>
                   {children}
                 </code>
