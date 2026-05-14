@@ -33,6 +33,14 @@
   max-height: 70vh;
 }
 
+/* Connected/Nested mode */
+.programming-editor.pe-connected {
+  border-radius: 0;
+  border: none;
+  max-height: none;
+  min-height: 100%;
+}
+
 /* Fullscreen mode */
 .programming-editor.pe-fullscreen {
   position: fixed;

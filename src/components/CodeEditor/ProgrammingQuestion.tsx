@@ -40,6 +40,7 @@ type ProgrammingQuestionProps = {
   examId: string;
   controls?: ExamControls;
   theme?: "dark" | "light";
+  className?: string;
 };
 
 type NewFileKind = "jsx" | "css";
@@ -91,6 +92,7 @@ export default function ProgrammingQuestion({
   examId,
   controls = DEFAULT_EXAM_CONTROLS,
   theme = "dark",
+  className = "",
 }: ProgrammingQuestionProps) {
   // --- State ---
   const [files, setFiles] = useState<EditorFile[]>(() =>
@@ -506,7 +508,7 @@ export default function ProgrammingQuestion({
   const isAtFileLimit = files.length >= MAX_EDITOR_FILES;
 
   return (
-    <div className={`programming-editor ${isFullscreen ? "pe-fullscreen" : ""}`} data-theme={theme}>
+    <div className={`programming-editor ${isFullscreen ? "pe-fullscreen" : ""} ${className}`} data-theme={theme}>
       {/* Toolbar */}
       <div className="pe-toolbar">
         <div className="pe-toolbarLeft">
