@@ -33,6 +33,20 @@
   max-height: 70vh;
 }
 
+/* Fullscreen mode */
+.programming-editor.pe-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  max-height: none;
+  height: 100vh;
+  border-radius: 0;
+  border: none;
+}
+
 /* Light theme overrides */
 .programming-editor[data-theme="light"] {
   color-scheme: light;
@@ -144,6 +158,17 @@
   min-height: 1.75rem;
   padding: 0 0.5rem;
   font-size: 0.72rem;
+}
+
+.pe-btnDanger {
+  border-color: var(--pe-danger);
+  background: var(--pe-danger);
+  color: white;
+  font-weight: 700;
+}
+
+.pe-btnDanger:hover:not(:disabled) {
+  filter: brightness(1.1);
 }
 
 .pe-codeZoom {

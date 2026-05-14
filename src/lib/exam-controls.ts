@@ -12,7 +12,6 @@ export type ExamControls = {
   clearAnswerEnabled: boolean;
   themeToggleEnabled: boolean;
   codeRunTestsEnabled: boolean;
-  codePreviewEnabled: boolean;
   codeFormatEnabled: boolean;
   codeConsoleEnabled: boolean;
   codeFileActionsEnabled: boolean;
@@ -33,7 +32,6 @@ export const DEFAULT_EXAM_CONTROLS: ExamControls = {
   clearAnswerEnabled: true,
   themeToggleEnabled: true,
   codeRunTestsEnabled: true,
-  codePreviewEnabled: true,
   codeFormatEnabled: true,
   codeConsoleEnabled: true,
   codeFileActionsEnabled: true,

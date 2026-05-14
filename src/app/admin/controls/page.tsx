@@ -95,11 +95,6 @@ const controlGroups: ControlGroup[] = [
         description: "Allow students to run server-side test cases.",
       },
       {
-        key: "codePreviewEnabled",
-        label: "Preview",
-        description: "Allow live preview for React component challenges.",
-      },
-      {
         key: "codeFormatEnabled",
         label: "Format",
         description: "Allow students to format code with Prettier.",
@@ -107,7 +102,7 @@ const controlGroups: ControlGroup[] = [
       {
         key: "codeConsoleEnabled",
         label: "Console",
-        description: "Allow students to open the preview console.",
+        description: "Allow students to view code output and errors.",
       },
       {
         key: "codeFileActionsEnabled",

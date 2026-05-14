@@ -13,7 +13,6 @@ import babelPlugin from "prettier/plugins/babel";
 import estreePlugin from "prettier/plugins/estree";
 import postcssPlugin from "prettier/plugins/postcss";
 import CodeEditor from "@/components/CodeEditor/CodeEditor";
-import LivePreview from "@/components/CodeEditor/LivePreview";
 import TestCasePanel from "@/components/CodeEditor/TestCasePanel";
 import {
   createInitialCodeFiles,
@@ -27,9 +26,6 @@ import type {
   ChallengeMode,
   ConsoleEntry,
   EditorFile,
-  PreviewError,
-  PreviewStatus,
-  PreviewStatusPayload,
   RunCodeResponse,
   TestCase,
 } from "@/lib/editorTypes";
@@ -53,10 +49,6 @@ const defaultEditorFontSize = 13;
 const minEditorFontSize = 11;
 const maxEditorFontSize = 20;
 const protectedComponentFiles = new Set(["App.jsx"]);
-
-function cloneFiles(files: EditorFile[]): EditorFile[] {
-  return files.map((file) => ({ ...file }));
-}
 
 function getDefaultNewFileName(kind: NewFileKind, fileCount: number) {
   return kind === "css"
@@ -107,9 +99,6 @@ export default function ProgrammingQuestion({
   const [activeFileName, setActiveFileName] = useState(
     files[0]?.name || "App.jsx",
   );
-  const [previewFiles, setPreviewFiles] = useState<EditorFile[]>([]);
-  const [status, setStatus] = useState<PreviewStatus>("ready");
-  const [previewError, setPreviewError] = useState<PreviewError | undefined>();
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [runResults, setRunResults] = useState<RunCodeResponse | null>(null);
@@ -120,6 +109,10 @@ export default function ProgrammingQuestion({
   const [fileModalKind, setFileModalKind] = useState<NewFileKind | null>(null);
   const [newFileName, setNewFileName] = useState("");
   const [newFileError, setNewFileError] = useState("");
+  const [deleteFileName, setDeleteFileName] = useState<string | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [history, setHistory] = useState<EditorFile[][]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Refs
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -155,15 +148,6 @@ export default function ProgrammingQuestion({
     setFiles(initialFiles);
     filesRef.current = initialFiles;
     setActiveFileName(initialFiles[0]?.name || "App.jsx");
-    // Auto-run preview for component mode so students don't see a blank pane
-    if (challengeMode === "component" && controls.codePreviewEnabled) {
-      setPreviewFiles(cloneFiles(initialFiles));
-      setStatus("running");
-    } else {
-      setPreviewFiles([]);
-      setStatus("ready");
-    }
-    setPreviewError(undefined);
     setConsoleEntries([]);
     setRunResults(null);
     setIsRunningTests(false);
@@ -174,7 +158,6 @@ export default function ProgrammingQuestion({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     challengeMode,
-    controls.codePreviewEnabled,
     questionId,
     starterCode,
   ]);
@@ -202,6 +185,7 @@ export default function ProgrammingQuestion({
   // --- Autosave (2-3 second debounce) ---
   const handleCodeChange = useCallback(
     (newCode: string) => {
+      setHistory((prev) => [...prev.slice(-19), filesRef.current]);
       const nextFiles = filesRef.current.map((file) =>
         file.name === activeFileName ? { ...file, content: newCode } : file,
       );
@@ -299,6 +283,7 @@ export default function ProgrammingQuestion({
       return;
     }
 
+    setHistory((prev) => [...prev.slice(-19), filesRef.current]);
     const nextFiles = filesRef.current.filter(
       (file) => file.name !== activeFile.name,
     );
@@ -306,15 +291,31 @@ export default function ProgrammingQuestion({
     filesRef.current = nextFiles;
     setActiveFileName(nextFiles[0]?.name || "App.jsx");
     emitCodeChange(nextFiles, true);
+    setDeleteFileName(null);
   }, [activeFile, emitCodeChange]);
 
-  // --- Run Preview (client-side, for component mode visual feedback) ---
-  const runPreview = useCallback(() => {
-    setStatus("running");
-    setPreviewError(undefined);
-    setConsoleEntries([]);
-    setPreviewFiles(cloneFiles(filesRef.current));
-  }, []);
+  const handleUndo = useCallback(() => {
+    if (history.length === 0) return;
+    const previousFiles = history[history.length - 1];
+    setHistory((prev) => prev.slice(0, -1));
+    setFiles(previousFiles);
+    filesRef.current = previousFiles;
+    emitCodeChange(previousFiles, true);
+  }, [history, emitCodeChange]);
+
+  const handleReset = useCallback(() => {
+    setHistory((prev) => [...prev.slice(-19), filesRef.current]);
+    const initialFiles = createInitialCodeFiles({
+      challengeMode,
+      starterCode,
+      savedCode: savedCodeRef.current,
+    });
+    setFiles(initialFiles);
+    filesRef.current = initialFiles;
+    setActiveFileName(initialFiles[0]?.name || "App.jsx");
+    emitCodeChange(initialFiles, true);
+    setShowResetConfirm(false);
+  }, [challengeMode, starterCode, emitCodeChange]);
 
   // --- Run Tests (calls server API → Edge Function) ---
   const runTests = useCallback(async () => {
@@ -424,33 +425,23 @@ export default function ProgrammingQuestion({
       setFiles(nextFiles);
       filesRef.current = nextFiles;
       emitCodeChange(nextFiles, true);
-      setPreviewError(undefined);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      setStatus("error");
-      setPreviewError({ message });
+      setConsoleEntries((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          level: "error" as const,
+          message: `Format error: ${message}`,
+          timestamp: new Date().toLocaleTimeString(),
+        },
+      ].slice(-maxConsoleEntries));
     }
   }, [activeFile, controls.codeFormatEnabled, emitCodeChange]);
-
-  // --- Preview callbacks ---
-  const handleStatusChange = useCallback((payload: PreviewStatusPayload) => {
-    setStatus(payload.status);
-    setPreviewError(payload.error);
-  }, []);
-
-  const handleConsoleMessage = useCallback((entry: ConsoleEntry) => {
-    setConsoleEntries((prev) => [...prev, entry].slice(-maxConsoleEntries));
-  }, []);
 
   // --- Keyboard shortcuts ---
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        event.preventDefault();
-        if (challengeMode === "component" && controls.codePreviewEnabled) {
-          runPreview();
-        }
-      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         if (controls.codeFormatEnabled) {
@@ -461,13 +452,7 @@ export default function ProgrammingQuestion({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    challengeMode,
-    controls.codeFormatEnabled,
-    controls.codePreviewEnabled,
-    runPreview,
-    formatCode,
-  ]);
+  }, [controls.codeFormatEnabled, formatCode]);
 
   // --- Resize handle ---
   const workspaceRef = useRef<HTMLDivElement | null>(null);
@@ -493,27 +478,22 @@ export default function ProgrammingQuestion({
     window.addEventListener("pointerup", stopResize);
   }, []);
 
-  // --- Error line ---
-  const activeErrorLine = status === "error" ? previewError?.line : undefined;
-
   // --- Status text ---
   const statusText = useMemo(() => {
     if (isRunningTests) return "Running tests...";
-    if (status === "error") return "Error";
     if (runResults) {
       const { passed, total } = runResults.summary;
       return `${passed}/${total} tests passing`;
     }
     return "Ready";
-  }, [isRunningTests, status, runResults]);
+  }, [isRunningTests, runResults]);
 
   const statusClass = useMemo(() => {
-    if (status === "error") return "pe-statusError";
     if (runResults?.summary.failed === 0 && runResults.summary.passed > 0)
       return "pe-statusPass";
     if (runResults?.summary.failed) return "pe-statusFail";
     return "pe-statusReady";
-  }, [status, runResults]);
+  }, [runResults]);
 
   const workspaceStyle = {
     "--pe-editor-width": `${editorPercent}%`,
@@ -526,23 +506,13 @@ export default function ProgrammingQuestion({
   const isAtFileLimit = files.length >= MAX_EDITOR_FILES;
 
   return (
-    <div className="programming-editor" data-theme={theme}>
+    <div className={`programming-editor ${isFullscreen ? "pe-fullscreen" : ""}`} data-theme={theme}>
       {/* Toolbar */}
       <div className="pe-toolbar">
         <div className="pe-toolbarLeft">
           <span className={`pe-status ${statusClass}`}>{statusText}</span>
         </div>
         <div className="pe-toolbarRight">
-          {isComponentMode && controls.codePreviewEnabled && (
-            <button
-              className="pe-btn pe-btnRun"
-              type="button"
-              onClick={runPreview}
-              title="Run preview (Ctrl+Enter)"
-            >
-              ▶ Preview
-            </button>
-          )}
           {controls.codeRunTestsEnabled && (
             <button
               className="pe-btn pe-btnTest"
@@ -568,6 +538,23 @@ export default function ProgrammingQuestion({
               Format
             </button>
           )}
+          <button
+            className="pe-btn"
+            type="button"
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            title="Undo last change"
+          >
+            Undo
+          </button>
+          <button
+            className="pe-btn"
+            type="button"
+            onClick={() => setShowResetConfirm(true)}
+            title="Reset to starter code"
+          >
+            Reset
+          </button>
           {controls.codeZoomEnabled && (
             <div className="pe-codeZoom" aria-label="Code zoom controls">
               <button
@@ -613,6 +600,14 @@ export default function ProgrammingQuestion({
               Console
             </button>
           )}
+          <button
+            className="pe-btn pe-btnSmall"
+            type="button"
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? "Exit" : "Fullscreen"}
+          </button>
         </div>
       </div>
 
@@ -668,7 +663,7 @@ export default function ProgrammingQuestion({
                   <button
                     className="pe-iconBtn pe-iconBtnDanger"
                     type="button"
-                    onClick={deleteActiveFile}
+                    onClick={() => activeFile && setDeleteFileName(activeFile.name)}
                     disabled={
                       !activeFile ||
                       protectedComponentFiles.has(activeFile.name)
@@ -687,7 +682,6 @@ export default function ProgrammingQuestion({
               value={activeFile?.content || ""}
               language={activeFile?.language || "javascript"}
               theme={theme}
-              errorLine={activeErrorLine}
               onChange={handleCodeChange}
             />
           </div>
@@ -704,32 +698,8 @@ export default function ProgrammingQuestion({
           ⋮
         </div>
 
-        {/* Right panel: preview (component mode) + tests */}
-        <div
-          className={`pe-rightPanel ${isComponentMode ? "pe-rightPanelSplit" : ""}`}
-        >
-          {/* Live preview — only for component challenges */}
-          {isComponentMode && controls.codePreviewEnabled && (
-            <div className="pe-previewSection">
-              <div className="pe-sectionHeader">
-                <span className="pe-sectionTitle">Preview</span>
-              </div>
-              <div className="pe-previewPane">
-                {previewFiles.length > 0 ? (
-                  <LivePreview
-                    files={previewFiles}
-                    onConsoleMessage={handleConsoleMessage}
-                    onStatusChange={handleStatusChange}
-                  />
-                ) : (
-                  <div className="pe-emptyState">
-                    Press &quot;Preview&quot; to render your component
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
+        {/* Right panel: tests + console */}
+        <div className="pe-rightPanel">
           {/* Test case panel */}
           <TestCasePanel
             challengeMode={challengeMode}
@@ -843,6 +813,76 @@ export default function ProgrammingQuestion({
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Delete file confirmation modal */}
+      {deleteFileName && (
+        <div className="pe-modalOverlay">
+          <div className="pe-modal" role="dialog" aria-modal="true">
+            <div className="pe-modalHeader">
+              <h3 className="pe-modalTitle">Delete File</h3>
+              <button
+                className="pe-iconBtn"
+                type="button"
+                onClick={() => setDeleteFileName(null)}
+                aria-label="Close dialog"
+              >
+                x
+              </button>
+            </div>
+            <div className="pe-modalBody">
+              <p>Are you sure you want to delete <strong>{deleteFileName}</strong>?</p>
+              <p className="pe-fieldHint">This action cannot be undone.</p>
+            </div>
+            <div className="pe-modalActions">
+              <button className="pe-btn" type="button" onClick={() => setDeleteFileName(null)}>
+                Cancel
+              </button>
+              <button
+                className="pe-btn pe-btnDanger"
+                type="button"
+                onClick={deleteActiveFile}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset confirmation modal */}
+      {showResetConfirm && (
+        <div className="pe-modalOverlay">
+          <div className="pe-modal" role="dialog" aria-modal="true">
+            <div className="pe-modalHeader">
+              <h3 className="pe-modalTitle">Reset Code</h3>
+              <button
+                className="pe-iconBtn"
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                aria-label="Close dialog"
+              >
+                x
+              </button>
+            </div>
+            <div className="pe-modalBody">
+              <p>Are you sure you want to reset all files to the starter code?</p>
+              <p className="pe-fieldHint">All your changes will be lost. This action cannot be undone.</p>
+            </div>
+            <div className="pe-modalActions">
+              <button className="pe-btn" type="button" onClick={() => setShowResetConfirm(false)}>
+                Cancel
+              </button>
+              <button
+                className="pe-btn pe-btnDanger"
+                type="button"
+                onClick={handleReset}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
