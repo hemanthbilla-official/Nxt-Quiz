@@ -93,7 +93,7 @@ export default function EditExamModal({
             <button
               type="submit"
               disabled={isSaving}
-              className="flex-1 py-3 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 rounded text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary-hover transition-all disabled:bg-muted disabled:text-muted-foreground flex items-center justify-center gap-2"
             >
               {isSaving ? (
                 <>

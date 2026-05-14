@@ -32,7 +32,7 @@ export default function QuestionUpload({
           className={`cursor-pointer flex-shrink-0 px-6 py-3 rounded text-sm font-bold transition-all flex items-center justify-center gap-2 ${
             isImporting
               ? "bg-muted text-muted-foreground"
-              : "bg-primary text-white hover:bg-primary-hover"
+              : "bg-primary text-primary-foreground hover:bg-primary-hover"
           }`}
         >
           {isImporting ? (

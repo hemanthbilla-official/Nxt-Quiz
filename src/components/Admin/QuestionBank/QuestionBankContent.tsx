@@ -282,7 +282,7 @@ export function QuestionBankContent() {
               setEditingId(null);
               setShowAdd(true);
             }}
-            className="px-4 py-2 rounded text-xs font-bold bg-primary text-white transition-all shadow-md"
+            className="px-4 py-2 rounded text-xs font-bold bg-primary text-primary-foreground transition-all shadow-md"
           >
             + Add Question
           </button>

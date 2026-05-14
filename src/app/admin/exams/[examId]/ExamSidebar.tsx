@@ -88,7 +88,7 @@ export default function ExamSidebar({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={onOpenEdit}
-              className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors gap-2 group"
+              className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-transparent hover:bg-muted transition-colors gap-2 group"
             >
               <Settings className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
               <span className="text-[10px] font-bold uppercase tracking-wider">Settings</span>
@@ -97,7 +97,7 @@ export default function ExamSidebar({
             {(exam.status === "closed" || exam.status === "in_progress") && (
               <Link
                 href={`/admin/exams/${examId}/analytics`}
-                className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-card hover:bg-muted transition-colors gap-2 group"
+                className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-transparent hover:bg-muted transition-colors gap-2 group"
               >
                 <BarChart2 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Analytics</span>
@@ -127,9 +127,9 @@ export default function ExamSidebar({
         
         <div className="space-y-5">
           {timeLeft !== null && (
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col items-center gap-1 animate-pulse">
-              <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Remaining</span>
-              <span className="text-3xl font-mono font-bold text-primary tracking-tighter">
+            <div className="p-4 rounded-lg bg-transparent border border-border flex flex-col items-center gap-1">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Remaining</span>
+              <span className="text-3xl font-mono font-medium text-foreground tracking-tighter">
                 {formatTime(timeLeft)}
               </span>
             </div>

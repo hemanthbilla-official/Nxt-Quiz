@@ -105,7 +105,7 @@ export default function StudentDetails({
           {/* Profile Card */}
           <div className="card p-6">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 rounded bg-primary flex items-center justify-center text-white text-2xl font-bold">
+              <div className="w-16 h-16 rounded bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold">
                 {data.student.full_name?.[0] || "S"}
               </div>
               <div>
@@ -200,13 +200,13 @@ export default function StudentDetails({
                         onClick={() => setFilter(f)}
                         className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
                           filter === f
-                            ? "bg-primary text-white shadow-sm"
+                            ? "bg-primary text-primary-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground hover:bg-card-hover"
                         }`}
                       >
                         {f}
                         <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${
-                          filter === f ? "bg-white/20 text-white" : "bg-muted/10 text-muted-foreground"
+                          filter === f ? "bg-white/20 text-primary-foreground" : "bg-muted/10 text-muted-foreground"
                         }`}>
                           {count}
                         </span>
@@ -266,7 +266,7 @@ export default function StudentDetails({
                                 key={opt.id}
                                 className={`p-3 rounded border-2 text-sm flex gap-3 ${borderColor} ${bgColor} text-foreground`}
                               >
-                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${isCorrectOpt ? 'bg-success text-white' : isSelected ? 'bg-danger text-white' : 'bg-border/50 text-muted-foreground'}`}>
+                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${isCorrectOpt ? 'bg-success text-primary-foreground' : isSelected ? 'bg-danger text-primary-foreground' : 'bg-border/50 text-muted-foreground'}`}>
                                   {opt.id}
                                 </span>
                                 <span className="pt-0.5">{opt.text}</span>

@@ -34,7 +34,7 @@ export default function Error({
         </p>
         <button
           onClick={reset}
-          className="w-full py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-colors duration-150"
+          className="w-full py-3 rounded bg-primary text-primary-foreground font-semibold hover:bg-primary-hover transition-colors duration-150"
         >
           Try Again
         </button>

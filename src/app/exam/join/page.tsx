@@ -86,7 +86,7 @@ export default function JoinExam() {
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="text-xs text-muted hover:text-danger transition-colors duration-150 flex items-center gap-2"
+            className="text-xs text-muted-foreground hover:text-danger transition-colors duration-150 flex items-center gap-2"
           >
             {loggingOut && <div className="spinner" style={{ width: 10, height: 10 }} />}
             {loggingOut ? "Signing out..." : "Sign Out"}
@@ -126,7 +126,7 @@ export default function JoinExam() {
                   value={examCode}
                   onChange={(e) => setExamCode(e.target.value.toUpperCase())}
                   placeholder="e.g. RCT-A7X3"
-                  className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors duration-150 text-center text-lg font-mono tracking-widest"
+                  className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors duration-150 text-center text-lg font-mono tracking-widest"
                   required
                   autoFocus
                   maxLength={20}
@@ -136,7 +136,7 @@ export default function JoinExam() {
               <button
                 type="submit"
                 disabled={loading || !examCode.trim()}
-                className="w-full py-3 px-6 rounded bg-primary text-white font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary w-full py-3 text-base shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -147,6 +147,7 @@ export default function JoinExam() {
                   "Enter Waiting Room"
                 )}
               </button>
+
             </form>
           </div>
         </div>

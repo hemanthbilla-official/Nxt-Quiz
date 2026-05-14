@@ -293,7 +293,7 @@ export default function ExamControl({
           </p>
           <button
             onClick={() => fetchData()}
-            className="w-full py-2.5 rounded bg-primary text-white font-medium hover:bg-primary-hover transition-all"
+            className="w-full py-2.5 rounded bg-primary text-primary-foreground font-medium hover:bg-primary-hover transition-all"
           >
             Retry
           </button>

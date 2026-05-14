@@ -60,7 +60,7 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
-                className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors duration-150"
+                className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors duration-150"
                 autoFocus
                 required
               />
@@ -68,7 +68,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3 rounded bg-primary text-white font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded bg-primary text-primary-foreground font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -85,7 +85,7 @@ export default function AdminLogin() {
         <div className="mt-6 text-center">
           <a
             href="/login"
-            className="text-xs text-muted hover:text-primary transition-colors duration-150"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors duration-150"
           >
             ← Back to Student Login
           </a>

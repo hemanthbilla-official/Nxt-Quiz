@@ -377,9 +377,9 @@ export default function CreateExam() {
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 -z-10" />
         {steps.map(step => (
           <div key={step.id} className="flex flex-col items-center gap-2 bg-background px-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all ${
-              currentStep === step.id ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-110" : 
-              currentStep > step.id ? "bg-success border-success text-white" : "bg-background border-border text-muted-foreground"
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-colors ${
+              currentStep === step.id ? "bg-primary border-primary text-primary-foreground" : 
+              currentStep > step.id ? "bg-success border-success text-primary-foreground" : "bg-background border-border text-muted-foreground"
             }`}>
               {currentStep > step.id ? <CheckCircle className="w-5 h-5" /> : step.id}
             </div>
@@ -409,8 +409,8 @@ export default function CreateExam() {
                   value={title}
                   onBlur={() => handleBlur("title")}
                   onChange={e => setTitle(e.target.value)}
-                  className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
-                    touched.title && !title.trim() ? "border-danger" : "border-border focus:border-primary"
+                  className={`w-full h-10 px-4 bg-transparent border rounded-md focus:outline-none focus:border-foreground transition-colors ${
+                    touched.title && !title.trim() ? "border-danger" : "border-border"
                   }`}
                   placeholder="e.g. Full-stack Assessment Q2"
                 />
@@ -427,8 +427,8 @@ export default function CreateExam() {
                     value={duration}
                     onBlur={() => handleBlur("duration")}
                     onChange={e => setDuration(e.target.value === "" ? "" : Number(e.target.value))}
-                    className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
-                      touched.duration && Number(duration) < 5 ? "border-danger" : "border-border focus:border-primary"
+                    className={`w-full h-10 px-4 bg-transparent border rounded-md focus:outline-none focus:border-foreground transition-colors ${
+                      touched.duration && Number(duration) < 5 ? "border-danger" : "border-border"
                     }`}
                     placeholder="Min 5 mins"
                   />
@@ -443,8 +443,8 @@ export default function CreateExam() {
                     value={capacity}
                     onBlur={() => handleBlur("capacity")}
                     onChange={e => setCapacity(e.target.value === "" ? "" : Number(e.target.value))}
-                    className={`w-full h-12 px-4 bg-background border rounded-md focus:ring-2 focus:ring-primary/10 outline-none transition-all ${
-                      touched.capacity && Number(capacity) < 1 ? "border-danger" : "border-border focus:border-primary"
+                    className={`w-full h-10 px-4 bg-transparent border rounded-md focus:outline-none focus:border-foreground transition-colors ${
+                      touched.capacity && Number(capacity) < 1 ? "border-danger" : "border-border"
                     }`}
                     placeholder="Min 1 student"
                   />
@@ -458,7 +458,7 @@ export default function CreateExam() {
 
           {currentStep === 2 && (
             <div className="space-y-6 animate-fade-in">
-              <div className="p-8 border-2 border-dashed border-border rounded-xl bg-muted/30 text-center flex flex-col items-center">
+              <div className="p-8 border border-dashed border-border hover:border-muted-foreground transition-colors rounded-lg bg-transparent text-center flex flex-col items-center">
                 <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors ${
                   isValidated ? "bg-success/10 text-success" : validationErrors.length > 0 ? "bg-danger/10 text-danger" : "bg-primary/10 text-primary"
                 }`}>
@@ -540,7 +540,7 @@ export default function CreateExam() {
                 </div>
               </div>
 
-              <div className="p-6 bg-muted/30 border border-border rounded-xl">
+              <div className="p-6 bg-card border border-border rounded-lg">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Questions Summary</p>
                   <span className="text-xs font-bold">{validatedQuestions?.length} Total Questions</span>

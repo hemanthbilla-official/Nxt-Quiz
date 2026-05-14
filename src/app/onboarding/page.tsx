@@ -118,13 +118,13 @@ export default function Onboarding() {
                   value={collegeId}
                   onChange={(e) => setCollegeId(e.target.value.toUpperCase())}
                   placeholder={STUDENT_ID_EXAMPLE}
-                  className="w-full pl-24 pr-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted/50 focus:outline-none focus:border-primary transition-colors duration-150 font-mono text-lg"
+                  className="w-full pl-24 pr-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors duration-150 font-mono text-lg"
                   required
                   autoFocus
                   maxLength={5}
                 />
               </div>
-              <p className="mt-3 text-xs text-muted">
+              <p className="mt-3 text-xs text-muted-foreground">
                 This ID uniquely identifies you. The prefix <strong>{STUDENT_ID_PREFIX}</strong> is already added.
               </p>
             </div>
@@ -132,7 +132,7 @@ export default function Onboarding() {
             <button
               type="submit"
               disabled={loading || collegeId.trim().length < 1}
-              className="w-full py-3 px-6 rounded bg-primary text-white font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full py-3 text-base shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -143,6 +143,7 @@ export default function Onboarding() {
                 "Complete Registration"
               )}
             </button>
+
           </form>
         </div>
       </div>

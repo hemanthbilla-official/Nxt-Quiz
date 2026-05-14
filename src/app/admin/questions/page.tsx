@@ -452,7 +452,7 @@ export default function QuestionBank() {
               <button 
                 onClick={handleBulkDelete}
                 disabled={submitting}
-                className="text-sm font-bold text-danger hover:text-danger/80 disabled:opacity-50"
+                className="text-sm font-bold text-danger hover:text-danger/80 disabled:bg-muted disabled:text-muted-foreground"
               >
                 Delete Selected
               </button>
@@ -481,14 +481,14 @@ export default function QuestionBank() {
               placeholder="Search questions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+              className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
             />
           </div>
           
           <select
             value={selectedExamName}
             onChange={(e) => setSelectedExamName(e.target.value)}
-            className="h-10 px-3 bg-card border border-border rounded-md text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none"
+            className="h-10 px-3 bg-transparent border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
           >
             <option value="All">All Exams</option>
             {availableExams.map(exam => (
@@ -498,7 +498,7 @@ export default function QuestionBank() {
 
           <button
             onClick={() => { setEditingId(null); setShowAdd(true); }}
-            className="btn-primary h-10 flex items-center gap-2"
+            className="btn-primary h-9 flex items-center gap-2"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Add Question</span>
@@ -543,10 +543,10 @@ export default function QuestionBank() {
                     <thead className="bg-card border-b border-border sticky top-0 z-10">
                       <tr>
                         <th className="p-4 w-10"></th>
-                        <th className="p-4 text-left font-medium text-muted-foreground">Question</th>
-                        <th className="p-4 text-left font-medium text-muted-foreground">Topic</th>
-                        <th className="p-4 text-left font-medium text-muted-foreground">Difficulty</th>
-                        <th className="p-4 text-right font-medium text-muted-foreground">Actions</th>
+                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Question</th>
+                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Topic</th>
+                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Difficulty</th>
+                        <th className="p-4 text-right font-medium text-muted-foreground text-xs uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -569,7 +569,7 @@ export default function QuestionBank() {
                             <td className="p-4">
                               <div className="max-w-md">
                                 <p className="font-medium text-foreground line-clamp-1">{q.question}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase tracking-tighter opacity-60">
+                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase tracking-tighter">
                                   {q.id}
                                 </p>
                               </div>
@@ -661,9 +661,9 @@ export default function QuestionBank() {
             className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" 
             onClick={() => setShowAdd(false)}
           />
-          <div className="relative w-full max-w-3xl bg-card border border-border rounded-xl shadow-2xl animate-fade-in max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold">
+          <div className="relative w-full max-w-3xl bg-card border border-border rounded-lg shadow-xl animate-fade-in max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <h2 className="text-lg font-medium">
                 {editingId ? "Edit Question" : "Add Question"}
               </h2>
               <button onClick={() => setShowAdd(false)} className="p-2 text-muted-foreground hover:text-foreground">
@@ -680,7 +680,7 @@ export default function QuestionBank() {
                     type="text"
                     value={form.topic}
                     onChange={e => setForm(prev => ({ ...prev, topic: e.target.value }))}
-                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
                   />
                 </div>
                 <div className="space-y-2">
@@ -688,7 +688,7 @@ export default function QuestionBank() {
                   <select
                     value={form.difficulty}
                     onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))}
-                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
                   >
                     <option value="Basic">Basic</option>
                     <option value="Intermediate">Intermediate</option>
@@ -724,7 +724,7 @@ export default function QuestionBank() {
                   rows={4}
                   value={form.question}
                   onChange={e => setForm(prev => ({ ...prev, question: e.target.value }))}
-                  className="w-full p-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                  className="w-full p-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors resize-none"
                   placeholder="Enter the question text..."
                 />
               </div>
@@ -736,7 +736,7 @@ export default function QuestionBank() {
                     rows={6}
                     value={form.code_snippet || ""}
                     onChange={e => setForm(prev => ({ ...prev, code_snippet: e.target.value }))}
-                    className="w-full p-4 bg-muted/50 border border-border rounded-md font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                    className="w-full p-4 bg-muted/50 border border-border rounded-md font-mono text-sm focus:outline-none focus:border-foreground transition-colors resize-none"
                     placeholder="// Enter code here..."
                   />
                 </div>
@@ -753,7 +753,7 @@ export default function QuestionBank() {
                           onClick={() => setForm(prev => ({ ...prev, correct_option_id: opt.id }))}
                           className={`w-11 h-11 rounded-md border font-bold transition-all ${
                             form.correct_option_id === opt.id 
-                              ? "bg-success text-white border-success" 
+                              ? "bg-success text-primary-foreground border-success" 
                               : "border-border text-muted-foreground hover:border-muted"
                           }`}
                         >
@@ -768,7 +768,7 @@ export default function QuestionBank() {
                             next[idx] = { ...next[idx], text: e.target.value };
                             setForm(prev => ({ ...prev, options: next }));
                           }}
-                          className="flex-1 h-11 px-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                          className="flex-1 h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
                           placeholder={`Option ${opt.id} text...`}
                         />
                       </div>
@@ -783,7 +783,7 @@ export default function QuestionBank() {
                   rows={3}
                   value={form.explanation}
                   onChange={e => setForm(prev => ({ ...prev, explanation: e.target.value }))}
-                  className="w-full p-4 bg-background border border-border rounded-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all resize-none"
+                  className="w-full p-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors resize-none"
                   placeholder="Explain the correct answer..."
                 />
               </div>

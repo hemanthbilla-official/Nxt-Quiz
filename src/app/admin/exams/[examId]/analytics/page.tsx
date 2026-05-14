@@ -396,7 +396,7 @@ export default function Analytics({
     dir: "asc" | "desc";
   }) => (
     <svg
-      className={`inline w-3 h-3 ml-1 ${active ? "text-primary" : "text-muted"}`}
+      className={`inline w-3 h-3 ml-1 ${active ? "text-primary" : "text-muted-foreground"}`}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -440,7 +440,7 @@ export default function Analytics({
   const { examMeta, summary, timeAnalytics, examHealth } = data;
 
   const statusColors: Record<string, string> = {
-    draft: "bg-muted/10 text-muted border-muted/20",
+    draft: "bg-muted/10 text-muted-foreground border-muted/20",
     waiting: "bg-warning/10 text-warning border-warning/20",
     in_progress: "bg-primary/10 text-primary border-primary/20",
     closed: "bg-success/10 text-success border-success/20",
@@ -515,7 +515,7 @@ export default function Analytics({
             </button>
             <button
               onClick={exportPDF}
-              className="px-5 py-2.5 rounded text-sm font-bold bg-primary text-white hover:bg-primary-hover transition-all flex items-center gap-2"
+              className="px-5 py-2.5 rounded text-sm font-bold bg-primary text-primary-foreground hover:bg-primary-hover transition-all flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
               PDF Report
@@ -532,7 +532,7 @@ export default function Analytics({
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all capitalize ${
                   activeTab === tab
-                    ? "bg-primary text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-card-hover"
                 }`}
               >
@@ -900,7 +900,7 @@ export default function Analytics({
                           )
                         }
                       >
-                        <td className="p-3 font-mono text-muted text-xs">
+                        <td className="p-3 font-mono text-muted-foreground text-xs">
                           {q.position}
                         </td>
                         <td className="p-3">
@@ -989,7 +989,7 @@ export default function Analytics({
                                           <span
                                             className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                               opt.id === q.correctOptionId
-                                                ? "bg-success text-white"
+                                                ? "bg-success text-primary-foreground"
                                                 : "bg-border text-muted-foreground"
                                             }`}
                                           >
@@ -1043,7 +1043,7 @@ export default function Analytics({
                                           className="flex items-center gap-3"
                                         >
                                           <span
-                                            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${isCorrect ? "bg-success text-white" : "bg-border text-muted-foreground"}`}
+                                            className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${isCorrect ? "bg-success text-primary-foreground" : "bg-border text-muted-foreground"}`}
                                           >
                                             {optId}
                                           </span>
@@ -1136,7 +1136,7 @@ export default function Analytics({
                   value={studentSearch}
                   onChange={(e) => setStudentSearch(e.target.value)}
                   placeholder="Search name, email, or ID..."
-                  className="px-4 py-2 rounded bg-background border border-border text-foreground text-sm placeholder:text-muted focus:outline-none focus:border-primary transition-all w-full sm:w-64"
+                  className="px-4 py-2 rounded bg-background border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-all w-full sm:w-64"
                 />
                 <button
                   onClick={exportCSV}
@@ -1195,7 +1195,7 @@ export default function Analytics({
                                 ? "bg-border text-muted-foreground"
                                 : i === 2
                                   ? "bg-[#cd7f32]/10 text-[#cd7f32]"
-                                  : "text-muted"
+                                  : "text-muted-foreground"
                           }`}
                         >
                           {i + 1}
@@ -1228,7 +1228,7 @@ export default function Analytics({
                         </span>
                       </td>
                       <td className="p-3 text-center">
-                        <span className={`text-xs font-bold ${s.tab_switch_count > 0 ? "text-danger" : "text-muted"}`}>
+                        <span className={`text-xs font-bold ${s.tab_switch_count > 0 ? "text-danger" : "text-muted-foreground"}`}>
                           {s.tab_switch_count}
                         </span>
                       </td>
@@ -1320,7 +1320,7 @@ export default function Analytics({
                 <p className="text-xs text-muted-foreground mt-1 font-semibold uppercase">
                   Early Finishers
                 </p>
-                <p className="text-[10px] text-muted mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   Under 50% of allowed time
                 </p>
               </div>
@@ -1331,7 +1331,7 @@ export default function Analytics({
                 <p className="text-xs text-muted-foreground mt-1 font-semibold uppercase">
                   Standard
                 </p>
-                <p className="text-[10px] text-muted mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   50% – 90% of allowed time
                 </p>
               </div>
@@ -1342,7 +1342,7 @@ export default function Analytics({
                 <p className="text-xs text-muted-foreground mt-1 font-semibold uppercase">
                   Last Minute
                 </p>
-                <p className="text-[10px] text-muted mt-0.5">
+                <p className="text-[10px] text-muted-foreground mt-0.5">
                   Over 90% of allowed time
                 </p>
               </div>
@@ -1371,7 +1371,7 @@ export default function Analytics({
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-success text-white" : "bg-border text-muted-foreground"}`}
+                          className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-success text-primary-foreground" : "bg-border text-muted-foreground"}`}
                         >
                           {i + 1}
                         </span>
@@ -1423,7 +1423,7 @@ export default function Analytics({
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-danger text-white" : "bg-border text-muted-foreground"}`}
+                          className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-danger text-primary-foreground" : "bg-border text-muted-foreground"}`}
                         >
                           {i + 1}
                         </span>

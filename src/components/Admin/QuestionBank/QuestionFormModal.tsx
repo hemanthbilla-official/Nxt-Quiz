@@ -341,7 +341,7 @@ export function QuestionFormModal({
                     <span
                       className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
                         form.correct_option_id === opt.id
-                          ? "bg-success text-white"
+                          ? "bg-success text-primary-foreground"
                           : "bg-border text-muted-foreground"
                       }`}
                     >
@@ -400,7 +400,7 @@ export function QuestionFormModal({
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-3 rounded bg-primary text-white font-semibold hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded bg-primary text-primary-foreground font-semibold hover:bg-primary-hover transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <div className="flex items-center justify-center gap-2">

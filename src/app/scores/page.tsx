@@ -103,7 +103,7 @@ export default function MyScores() {
             <p className="text-muted-foreground mb-6">You haven&apos;t completed any exams yet.</p>
             <button
               onClick={() => router.push("/exam/join")}
-              className="px-6 py-2 rounded bg-primary text-white text-sm font-medium hover:bg-primary-hover transition-colors duration-150"
+              className="px-6 py-2 rounded bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition-colors duration-150"
             >
               Join an Exam
             </button>

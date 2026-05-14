@@ -45,7 +45,7 @@ export default function Login() {
           <button
             onClick={signInWithGoogle}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 bg-card hover:bg-card-hover text-foreground font-medium py-3 px-6 rounded border border-border hover:border-border-hover transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-3 bg-card hover:bg-card-hover text-foreground font-medium py-3 px-6 rounded border border-border hover:border-border-hover transition-colors duration-150 disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -77,7 +77,7 @@ export default function Login() {
             )}
           </button>
 
-          <p className="mt-6 text-center text-xs text-muted">
+          <p className="mt-6 text-center text-xs text-muted-foreground">
             By signing in, you agree to participate in the assessment
           </p>
         </div>
@@ -85,7 +85,7 @@ export default function Login() {
         <div className="mt-6 text-center">
           <a
             href="/admin/login"
-            className="text-xs text-muted hover:text-primary transition-colors duration-150"
+            className="text-xs text-muted-foreground hover:text-primary transition-colors duration-150"
           >
             Admin Portal →
           </a>

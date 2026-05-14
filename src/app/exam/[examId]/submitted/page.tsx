@@ -270,8 +270,8 @@ export default function Submitted({
           <div
             className={`inline-flex items-center justify-center w-20 h-20 rounded mb-6 transition-transform duration-500 ${
               isPass
-                ? "bg-success text-white rotate-12"
-                : "bg-danger text-white -rotate-12"
+                ? "bg-success text-primary-foreground rotate-12"
+                : "bg-danger text-primary-foreground -rotate-12"
             }`}
           >
             {isPass ? (
@@ -375,7 +375,7 @@ export default function Submitted({
                 </p>
                 <span
                   className={`inline-block px-3 py-1 rounded-full text-xs font-black uppercase ${
-                    isPass ? "bg-success text-white" : "bg-danger text-white"
+                    isPass ? "bg-success text-primary-foreground" : "bg-danger text-primary-foreground"
                   }`}
                 >
                   {isPass ? "OH YOU PASSED" : "NEED IMPROVEMENTS"}
@@ -409,7 +409,7 @@ export default function Submitted({
               className={`flex-1 px-8 py-4 rounded text-sm font-bold transition-all flex items-center justify-center gap-3 ${
                 showReview
                   ? "bg-border text-foreground"
-                  : "bg-primary text-white hover:bg-primary-hover"
+                  : "bg-primary text-primary-foreground hover:bg-primary-hover"
               }`}
             >
               {loadingResults ? (
@@ -635,11 +635,11 @@ export default function Submitted({
                               <div
                                 className={`w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-xs font-black ${
                                   isTheCorrectAnswer
-                                    ? "bg-success text-white"
+                                    ? "bg-success text-primary-foreground"
                                     : isUserChoice && isWrong
-                                      ? "bg-danger text-white"
+                                      ? "bg-danger text-primary-foreground"
                                       : isUserChoice && !isPublished
-                                        ? "bg-primary text-white"
+                                        ? "bg-primary text-primary-foreground"
                                         : "bg-card-hover"
                                 }`}
                               >
@@ -657,7 +657,7 @@ export default function Submitted({
                                     </span>
                                   )}
                                   {isTheCorrectAnswer && !isUserChoice && (
-                                    <span className="rounded-full bg-success px-2.5 py-1 text-[9px] font-black uppercase leading-none text-white">
+                                    <span className="rounded-full bg-success px-2.5 py-1 text-[9px] font-black uppercase leading-none text-primary-foreground">
                                       Correct Answer
                                     </span>
                                   )}

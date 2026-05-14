@@ -401,7 +401,7 @@ export default function ReviewExam({
             </div>
           )}
           <div className="card p-5 text-center">
-            <p className="text-3xl font-bold text-muted">{unanswered.length}</p>
+            <p className="text-3xl font-bold text-muted-foreground">{unanswered.length}</p>
             <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <IconQuestion /> Unanswered
             </p>
@@ -493,7 +493,7 @@ export default function ReviewExam({
                           ? q.question.slice(0, 80) + "..."
                           : q.question}
                       </span>
-                      <span className="text-xs text-muted ml-2">
+                      <span className="text-xs text-muted-foreground ml-2">
                         [{q.topic}]
                       </span>
                     </div>
@@ -518,7 +518,7 @@ export default function ReviewExam({
               isOpeningConfirm ||
               navigatingToQuestion !== null
             }
-            className="px-6 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 disabled:bg-muted disabled:text-muted-foreground"
           >
             {isNavigatingBack ? (
               <div className="spinner" style={{ width: 16, height: 16 }} />
@@ -547,7 +547,7 @@ export default function ReviewExam({
               isNavigatingBack ||
               navigatingToQuestion !== null
             }
-            className="px-8 py-3 rounded text-sm font-semibold bg-success text-white transition-all  flex items-center gap-2 disabled:opacity-50"
+            className="px-8 py-3 rounded text-sm font-semibold bg-success text-primary-foreground transition-all  flex items-center gap-2 disabled:bg-muted disabled:text-muted-foreground"
           >
             {isOpeningConfirm ? (
               <div
@@ -607,7 +607,7 @@ export default function ReviewExam({
             </p>
             <button
               onClick={() => setShowTabWarning(false)}
-              className="w-full py-4 rounded bg-danger text-white font-bold text-lg hover:bg-danger-hover transition-all"
+              className="w-full py-4 rounded bg-danger text-primary-foreground font-bold text-lg hover:bg-danger-hover transition-all"
             >
               I Understand
             </button>
@@ -654,7 +654,7 @@ export default function ReviewExam({
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3 rounded text-sm font-semibold bg-success text-white transition-all disabled:opacity-50"
+                className="flex-1 py-3 rounded text-sm font-semibold bg-success text-primary-foreground transition-all disabled:bg-muted disabled:text-muted-foreground"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">

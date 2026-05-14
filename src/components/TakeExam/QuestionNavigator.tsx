@@ -23,16 +23,6 @@ export function QuestionNavigator({
 }: QuestionNavigatorProps) {
   const router = useRouter();
 
-  const getQuestionStatus = (qId: string) => {
-    const a = answers[qId];
-    if (!a) return "unanswered";
-    if (a.selected_option_id) return "answered";
-    if (a.code_answer?.trim()) return "answered";
-    if (a.is_bookmarked) return "bookmarked";
-    if (a.is_skipped) return "skipped";
-    return "unanswered";
-  };
-
   return (
     <>
       <aside
@@ -79,20 +69,44 @@ export function QuestionNavigator({
 
         <div className="grid grid-cols-5 gap-2">
           {questions.map((q, i) => {
-            const status = getQuestionStatus(q.id);
+            const a = answers[q.id];
+            const isAnswered = !!(a?.selected_option_id || a?.code_answer?.trim());
+            const isSkipped = !!a?.is_skipped;
+            const isBookmarked = !!a?.is_bookmarked;
             const isCurrent = i === currentIndex;
+            
             return (
               <button
                 key={q.id}
                 onClick={() => setCurrentIndex(i)}
-                className={`q-dot ${isCurrent ? "current" : status}`}
-                title={`Question ${i + 1} - ${status}`}
+                className={`q-dot flex flex-col items-center justify-between py-1.5 h-10 ${isCurrent ? "current" : ""}`}
+                title={`Question ${i + 1}`}
               >
-                {i + 1}
+                <span className={`text-[13px] font-bold ${isCurrent ? "text-primary" : "text-foreground"}`}>
+                  {i + 1}
+                </span>
+                
+                <div className="flex items-center justify-center gap-0.5 h-1.5">
+                  {isAnswered && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                  )}
+                  {isSkipped && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                  )}
+                  {isBookmarked && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                  {!isAnswered && !isSkipped && !isBookmarked && (
+                    <span className="w-1 h-1 rounded-full bg-border/40" />
+                  )}
+                </div>
               </button>
             );
           })}
         </div>
+
+
+
 
         <div className="mt-6">
           <button
@@ -100,7 +114,7 @@ export function QuestionNavigator({
               markExamNavigationIntent();
               router.push(`/exam/${examId}/review`);
             }}
-            className="w-full py-3 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors duration-150"
+            className="w-full py-3 rounded text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-150"
           >
             Review &amp; Submit
           </button>
@@ -110,7 +124,7 @@ export function QuestionNavigator({
       {!showNav && (
         <button
           onClick={() => setShowNav(true)}
-          className="fixed right-4 bottom-4 w-10 h-10 rounded bg-primary text-white flex items-center justify-center hover:bg-primary-hover transition-colors duration-150 z-50"
+          className="fixed right-4 bottom-4 w-10 h-10 rounded bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary-hover transition-colors duration-150 z-50"
           title="Show question navigator"
         >
           <svg

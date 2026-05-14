@@ -335,7 +335,7 @@ export default function StudentsPage() {
                             <button
                               onClick={() => handleSaveInlineEdit(s.id)}
                               disabled={isSaving}
-                              className="text-xs font-bold text-success hover:underline disabled:opacity-50"
+                              className="text-xs font-bold text-success hover:underline disabled:bg-muted disabled:text-muted-foreground"
                             >
                               Save
                             </button>
@@ -351,7 +351,7 @@ export default function StudentsPage() {
                             <span className="text-[10px] font-bold text-danger uppercase">Confirm?</span>
                             <button
                               onClick={() => handleDelete(s.id)}
-                              className="px-2 py-1 bg-danger text-white rounded text-[10px] font-bold"
+                              className="px-2 py-1 bg-danger text-primary-foreground rounded text-[10px] font-bold"
                             >
                               Delete
                             </button>

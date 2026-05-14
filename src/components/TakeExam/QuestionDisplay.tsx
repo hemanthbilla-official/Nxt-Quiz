@@ -171,27 +171,29 @@ export function QuestionDisplay({
                 <button
                   key={option.id}
                   onClick={() => selectOption(currentQuestion.id, option.id)}
-                  className={`w-full text-left p-4 rounded border-2 transition-colors duration-150 ${
+                  className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 group ${
                     isSelected
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border bg-card hover:border-border-hover text-muted-foreground"
+                      ? "border-success bg-success/[0.03] shadow-sm"
+                      : "border-border bg-card hover:border-border-hover"
                   }`}
                 >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-semibold text-sm ${
+                  <div className="flex items-center gap-4">
+                    <div
+                      className={`flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center font-bold text-sm transition-all duration-200 ${
                         isSelected
-                          ? "bg-primary text-white"
-                          : "bg-border/50 text-muted-foreground"
+                          ? "bg-success border-success text-white shadow-md shadow-success/20 scale-105"
+                          : "bg-muted/20 border-border text-muted-foreground group-hover:border-muted-foreground group-hover:text-foreground"
                       }`}
                     >
                       {option.id}
-                    </span>
-                    <span className="pt-1 text-sm leading-relaxed">
+                    </div>
+                    <span className={`text-base leading-relaxed transition-colors duration-200 ${isSelected ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                       {option.text}
                     </span>
                   </div>
                 </button>
+
+
               );
             })}
           </div>
@@ -290,7 +292,7 @@ export function QuestionDisplay({
                 markExamNavigationIntent();
                 router.push(`/exam/${examId}/review`);
               }}
-              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors duration-150"
+              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-150"
             >
               Review &amp; Submit →
             </button>
@@ -299,7 +301,7 @@ export function QuestionDisplay({
               onClick={() =>
                 setCurrentIndex(Math.min(totalQuestions - 1, currentIndex + 1))
               }
-              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors duration-150"
+              className="px-5 py-2.5 rounded text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-150"
             >
               Next →
             </button>

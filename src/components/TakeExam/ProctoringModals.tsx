@@ -47,7 +47,7 @@ export function ProctoringModals({
             </p>
             <button
               onClick={() => setShowTabWarning(false)}
-              className="w-full py-3 rounded bg-danger text-white font-bold hover:opacity-90 transition-opacity duration-150"
+              className="w-full py-3 rounded bg-danger text-primary-foreground font-bold hover:opacity-90 transition-opacity duration-150"
             >
               I Understand
             </button>
@@ -82,7 +82,7 @@ export function ProctoringModals({
             </p>
             <button
               onClick={enterFullScreen}
-              className="w-full py-3 rounded bg-primary text-white font-bold hover:bg-primary-hover transition-colors duration-150"
+              className="w-full py-3 rounded bg-primary text-primary-foreground font-bold hover:bg-primary-hover transition-colors duration-150"
             >
               Enter Full Screen to Continue
             </button>

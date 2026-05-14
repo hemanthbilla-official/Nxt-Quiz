@@ -134,7 +134,7 @@ function Toggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-all disabled:opacity-50 ${
+      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-all disabled:bg-muted disabled:text-muted-foreground ${
         checked ? "border-success bg-success" : "border-border bg-card-hover"
       }`}
     >
@@ -271,7 +271,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={saveControls}
           disabled={saving || loading}
-          className="rounded bg-primary px-5 py-2.5 text-sm font-bold text-white transition-all hover:bg-primary-hover disabled:opacity-50"
+          className="rounded bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground"
         >
           {saving ? "Saving..." : "Save Controls"}
         </button>
@@ -279,7 +279,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(true)}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:bg-muted disabled:text-muted-foreground"
         >
           Enable All
         </button>
@@ -287,7 +287,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(false)}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:bg-muted disabled:text-muted-foreground"
         >
           Disable All
         </button>
@@ -295,7 +295,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={resetDefaults}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-card-hover hover:text-foreground disabled:opacity-50"
+          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-card-hover hover:text-foreground disabled:bg-muted disabled:text-muted-foreground"
         >
           Reset Defaults
         </button>

@@ -158,7 +158,7 @@ export default function AdminLayout({
         <div className="h-16 flex items-center px-6 border-b border-border mb-6">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-sm">N</span>
+              <span className="text-primary-foreground font-bold text-sm">N</span>
             </div>
             {!sidebarCollapsed && (
               <div className="flex flex-col min-w-0">
