@@ -126,6 +126,8 @@ export default function ProgrammingQuestion({
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const filesRef = useRef(files);
   filesRef.current = files;
+  const savedCodeRef = useRef(savedCode);
+  savedCodeRef.current = savedCode;
 
   const activeFile = useMemo(
     () => files.find((file) => file.name === activeFileName) || files[0],
@@ -142,11 +144,13 @@ export default function ProgrammingQuestion({
   }, [controls.codeConsoleEnabled, controls.codeFileActionsEnabled]);
 
   // --- Reset state when question changes ---
+  // NOTE: savedCode is read via ref so that formatting/saving (which updates
+  // the parent's savedCode prop) does not re-trigger this reset effect.
   useEffect(() => {
     const initialFiles = createInitialCodeFiles({
       challengeMode,
       starterCode,
-      savedCode,
+      savedCode: savedCodeRef.current,
     });
     setFiles(initialFiles);
     filesRef.current = initialFiles;
@@ -167,11 +171,11 @@ export default function ProgrammingQuestion({
     setFileModalKind(null);
     setNewFileName("");
     setNewFileError("");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     challengeMode,
     controls.codePreviewEnabled,
     questionId,
-    savedCode,
     starterCode,
   ]);
 
