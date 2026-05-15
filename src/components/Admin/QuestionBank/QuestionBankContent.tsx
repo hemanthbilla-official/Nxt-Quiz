@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import type { Question } from "@/lib/quizTypes";
 import { QuestionList } from "./QuestionList";
 import { QuestionFormModal } from "./QuestionFormModal";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { toast } from "react-toastify";
+import { AlertTriangle } from "lucide-react";
 
 export const defaultForm: Partial<Question> = {
   topic: "React",
@@ -37,6 +40,21 @@ export function QuestionBankContent() {
 
   const [submitting, setSubmitting] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "info" | "warning" | "danger";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
+  const [isHardResetModalOpen, setIsHardResetModalOpen] = useState(false);
+  const [hardResetInput, setHardResetInput] = useState("");
 
   const [form, setForm] = useState<Partial<Question>>(defaultForm);
 
@@ -104,9 +122,12 @@ export function QuestionBankContent() {
 
       if (res.ok) {
         await fetchQuestions();
+        toast.success(editingId ? "Question updated" : "Question created");
         setEditingId(null);
         setShowAdd(false);
         setForm({ ...defaultForm });
+      } else {
+        toast.error("Failed to save question");
       }
     } finally {
       setSubmitting(false);
@@ -114,17 +135,29 @@ export function QuestionBankContent() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure? This will remove the question from all exams."))
-      return;
-    const res = await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
-    if (res.ok) fetchQuestions();
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Question",
+      message: "Are you sure? This will remove the question from all exams.",
+      type: "danger",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const res = await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          toast.success("Question deleted");
+          fetchQuestions();
+        } else {
+          toast.error("Failed to delete question");
+        }
+      }
+    });
   };
 
   const handleHardReset = async () => {
-    const confirmText = prompt(
-      'CRITICAL: This will PERMANENTLY delete ALL exams, ALL student attempts, and ALL questions from the entire database. Type "WIPE EVERYTHING" to confirm:'
-    );
-    if (confirmText !== "WIPE EVERYTHING") return;
+    if (hardResetInput !== "WIPE EVERYTHING") {
+      toast.warning("Verification text doesn't match");
+      return;
+    }
 
     setIsDeletingAll(true);
     try {
@@ -134,10 +167,12 @@ export function QuestionBankContent() {
         body: JSON.stringify({ confirmation: "WIPE DATABASE" }),
       });
       if (res.ok) {
-        alert("Database has been completely wiped clean.");
+        toast.success("Database wiped successfully");
+        setIsHardResetModalOpen(false);
+        setHardResetInput("");
         fetchQuestions();
       } else {
-        alert("Wipe failed.");
+        toast.error("Wipe failed");
       }
     } finally {
       setIsDeletingAll(false);
@@ -229,7 +264,7 @@ export function QuestionBankContent() {
           />
           {questions.length > 0 && process.env.NEXT_PUBLIC_ENVIRONMENT === "local" && (
             <button
-              onClick={handleHardReset}
+              onClick={() => setIsHardResetModalOpen(true)}
               disabled={isDeletingAll}
               className="px-4 py-2 rounded text-xs font-bold text-danger hover:bg-danger/10 border border-danger/20 transition-all flex items-center gap-2 shadow-sm"
             >
@@ -308,6 +343,57 @@ export function QuestionBankContent() {
           submitting={submitting}
         />
       )}
+
+      {/* Hard Reset Modal */}
+      {isHardResetModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content max-w-md">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">System Hard Reset</h2>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                CRITICAL: This will PERMANENTLY delete ALL exams, ALL student attempts, and ALL questions from the entire database. This action cannot be reversed.
+              </p>
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type &quot;WIPE EVERYTHING&quot; to confirm</label>
+                <input 
+                  type="text"
+                  value={hardResetInput}
+                  onChange={e => setHardResetInput(e.target.value)}
+                  placeholder="Verification text"
+                  className="input w-full h-12 border-danger/30 focus:border-danger focus:ring-danger/5"
+                />
+              </div>
+              <div className="flex gap-3 mt-8">
+                <button 
+                  onClick={() => { setIsHardResetModalOpen(false); setHardResetInput(""); }}
+                  className="btn-secondary flex-1 h-11"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleHardReset}
+                  disabled={isDeletingAll || hardResetInput !== "WIPE EVERYTHING"}
+                  className="btn-destructive flex-1 h-11 shadow-lg shadow-danger/20"
+                >
+                  {isDeletingAll ? "Wiping..." : "WIPE DATABASE"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }

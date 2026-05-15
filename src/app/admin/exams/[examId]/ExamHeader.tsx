@@ -62,11 +62,11 @@ export default function ExamHeader({
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{exam.title}</h1>
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest border ${
-              exam.status === "waiting" ? "bg-warning/10 border-warning/20 text-warning" :
-              exam.status === "in_progress" ? "bg-primary/10 border-primary/20 text-primary" :
-              exam.status === "closed" ? "bg-success/10 border-success/20 text-success" :
-              "border-border text-muted-foreground"
+            <span className={`badge ${
+              exam.status === "waiting" ? "badge-warning" :
+              exam.status === "in_progress" ? "badge-accent" :
+              exam.status === "closed" ? "badge-success" :
+              "badge-default"
             }`}>
               {exam.status.replace("_", " ")}
             </span>
@@ -74,45 +74,45 @@ export default function ExamHeader({
         </div>
         <div className="flex items-center gap-3 ml-12">
           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Access Code</span>
-          <span className="text-sm font-mono font-bold text-primary tracking-widest bg-primary/5 px-2 py-0.5 rounded border border-primary/10">
+          <span className="text-sm font-mono font-bold text-accent tracking-widest bg-accent/5 px-2 py-0.5 rounded border border-accent/10">
             {exam.exam_code}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 p-1.5 bg-muted/30 border border-border rounded-xl">
+      <div className="flex items-center gap-1.5 p-1.5 bg-background-secondary border border-border/50 rounded-xl">
         {metrics.map((m, i) => {
           const Icon = m.icon;
           const isFilterable = m.value !== null;
           const isActive = statusFilter === m.value;
 
           return (
-            <div key={m.label} className="flex items-center gap-1.5">
+            <div key={m.label} className="flex items-center">
               {isFilterable ? (
                 <button
                   onClick={() => onStatusFilterChange(isActive ? null : m.value)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group ${
                     isActive 
-                      ? "bg-background shadow-sm ring-1 ring-border" 
-                      : "hover:bg-background/50"
+                      ? "bg-card shadow-sm border border-border ring-1 ring-black/5" 
+                      : "hover:bg-card/50"
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${isActive ? m.color : "text-muted-foreground group-hover:text-foreground"}`} />
                   <div className="text-left leading-none">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5">{m.label}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
                     <p className={`text-sm font-bold ${isActive ? m.color : "text-foreground"}`}>{m.count}</p>
                   </div>
                 </button>
               ) : (
-                <div className="flex items-center gap-3 px-3 py-2">
+                <div className="flex items-center gap-3 px-3 py-2.5">
                   <Icon className="w-4 h-4 text-muted-foreground" />
                   <div className="text-left leading-none">
-                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter mb-0.5">{m.label}</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
                     <p className="text-sm font-bold text-foreground">{m.count}</p>
                   </div>
                 </div>
               )}
-              {i < metrics.length - 1 && <div className="w-px h-6 bg-border mx-1" />}
+              {i < metrics.length - 1 && <div className="w-px h-8 bg-border/50 mx-1.5" />}
             </div>
           );
         })}

@@ -21,6 +21,7 @@ import { shuffleArray } from "@/lib/utils/random";
 import { QuestionDisplay } from "./QuestionDisplay";
 import { QuestionNavigator } from "./QuestionNavigator";
 import { ProctoringModals } from "./ProctoringModals";
+import { toast } from "react-toastify";
 
 import "@/app/exam-editor.css";
 
@@ -156,15 +157,33 @@ export function TakeExamContent({ examId }: { examId: string }) {
           filter: `id=eq.${examId}`,
         },
         (payload) => {
-          const newClosesAt = payload.new.closes_at;
-          if (newClosesAt) {
-            const dueAtMs = new Date(newClosesAt).getTime();
-            const nowMs = Date.now() + serverDrift;
-            const remaining = Math.max(0, Math.floor((dueAtMs - nowMs) / 1000));
-            setTimeLeft(remaining);
-            console.log("🌍 Time extended (Global)! New remaining:", remaining);
+          if (payload.new.status === "closed") {
+            toast.info("Exam has been ended by admin. Your answers were submitted automatically.");
+            handleAutoSubmit(1000); // Wait 1s for any pending saves to flush
+          } else {
+            const newClosesAt = payload.new.closes_at;
+            if (newClosesAt) {
+              const dueAtMs = new Date(newClosesAt).getTime();
+              const nowMs = Date.now() + serverDrift;
+              const remaining = Math.max(0, Math.floor((dueAtMs - nowMs) / 1000));
+              setTimeLeft(remaining);
+              console.log("🌍 Time extended (Global)! New remaining:", remaining);
+            }
           }
         },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "exams",
+          filter: `id=eq.${examId}`,
+        },
+        () => {
+          toast.error("This exam is no longer available.");
+          router.push("/exam/join");
+        }
       )
       .subscribe();
 
@@ -204,6 +223,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
           if (res.status === 401) {
             router.push("/login");
           } else if (res.status === 404) {
+            toast.error("This exam is no longer available.");
             router.push("/exam/join");
           }
           return;
@@ -285,7 +305,10 @@ export function TakeExamContent({ examId }: { examId: string }) {
     loadExam();
   }, [examId, router]);
 
-  const handleAutoSubmit = useCallback(async () => {
+  const handleAutoSubmit = useCallback(async (delayMs: number = 0) => {
+    if (delayMs > 0) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
     const id = attemptIdRef.current;
     if (!id) return;
     try {
@@ -309,7 +332,7 @@ export function TakeExamContent({ examId }: { examId: string }) {
       setTimeLeft((prev) => {
         if (prev === null || prev <= 1) {
           clearInterval(interval);
-          handleAutoSubmit();
+          handleAutoSubmit(1000); // 1s grace for saves
           return 0;
         }
         return prev - 1;
@@ -483,46 +506,69 @@ export function TakeExamContent({ examId }: { examId: string }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-50 bg-card border-b border-border px-4 py-3">
-        <div className="max-w-7xl mx-auto flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-foreground">
-              Q {currentIndex + 1}/{questions.length}
-            </span>
-            <span className="text-xs text-muted-foreground px-2 py-0.5 rounded bg-border/50">
-              {currentQuestion.topic}
-            </span>
-            <span
-              className={`text-xs px-2 py-0.5 rounded ${
-                currentQuestion.difficulty === "Intermediate"
-                  ? "bg-warning/10 text-warning"
-                  : "bg-success/10 text-success"
-              }`}
-            >
-              {currentQuestion.difficulty}
-            </span>
+      <header className="sticky top-0 z-50 glass border-b border-border/50 px-4 h-16 flex items-center">
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider leading-none mb-1">
+                Question
+              </span>
+              <span className="text-lg font-bold text-foreground leading-none">
+                {currentIndex + 1} <span className="text-muted-foreground font-medium text-sm">/ {questions.length}</span>
+              </span>
+            </div>
+            <div className="h-8 w-px bg-border/50 mx-1" />
+            <div className="flex items-center gap-2">
+              <span className="badge badge-default">
+                {currentQuestion.topic}
+              </span>
+              <span
+                className={`badge ${
+                  currentQuestion.difficulty === "Intermediate"
+                    ? "badge-warning"
+                    : currentQuestion.difficulty === "Advanced"
+                    ? "badge-danger"
+                    : "badge-success"
+                }`}
+              >
+                {currentQuestion.difficulty}
+              </span>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {saving && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <div className="spinner" style={{ width: 12, height: 12 }} />
-                Saving
-              </span>
-            )}
-            {controls.themeToggleEnabled && <ThemeToggle />}
-            <span className="text-xs text-muted-foreground">
-              {answeredCount}/{questions.length} answered
-            </span>
+          <div className="flex items-center gap-3 lg:gap-5">
+            <div className="hidden sm:flex items-center gap-3 text-xs font-medium text-muted-foreground">
+              {saving && (
+                <span className="flex items-center gap-1.5 animate-pulse">
+                  <div className="spinner" style={{ width: 12, height: 12 }} />
+                  Saving
+                </span>
+              ) || (
+                <span className="flex items-center gap-1.5 text-success">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Saved
+                </span>
+              )}
+              <div className="w-px h-4 bg-border/50" />
+              <span>{answeredCount} answered</span>
+            </div>
+
             {timeLeft !== null && (
               <div
-                className={`px-4 py-2 rounded font-mono font-bold text-lg ${
+                className={`px-4 py-1.5 rounded-lg font-mono font-bold text-lg transition-colors border ${
                   isUrgent
-                    ? "bg-danger/10 text-danger"
-                    : "bg-primary/10 text-primary"
+                    ? "bg-danger-muted text-danger border-danger/20"
+                    : "bg-background-secondary text-foreground border-border"
                 }`}
               >
                 {formatTime(timeLeft)}
+              </div>
+            )}
+            {controls.themeToggleEnabled && (
+              <div className="border-l border-border/50 pl-4 hidden md:block">
+                <ThemeToggle />
               </div>
             )}
           </div>

@@ -44,21 +44,23 @@ export default function ExamSidebar({
   return (
     <div className="w-full lg:w-80 space-y-6">
       {/* Primary Actions */}
-      <div className="card p-6">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-6 flex items-center gap-2">
-          <Zap className="w-3.5 h-3.5 text-primary" />
+      <div className="card p-6 overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-8 -mt-4 -mr-4 bg-accent/5 rounded-full blur-2xl" />
+        
+        <h3 className="section-label mb-6 flex items-center gap-2">
+          <Zap className="w-3.5 h-3.5 text-accent" />
           Control Panel
         </h3>
 
-        <div className="space-y-4">
+        <div className="space-y-4 relative">
           {exam.status === "waiting" && (
             <button
               onClick={onStart}
               disabled={starting || waitingCount === 0 || (exam.questionsCount || 0) === 0}
-              className="btn-primary w-full h-12 flex items-center justify-center gap-2 text-sm"
+              className="btn-primary w-full h-12 text-sm shadow-lg shadow-accent/20"
             >
               {starting ? (
-                <div className="spinner h-4 w-4 border-white border-t-transparent" />
+                <div className="spinner h-4 w-4" />
               ) : (
                 <>
                   <Play className="w-4 h-4 fill-current" />
@@ -72,10 +74,10 @@ export default function ExamSidebar({
             <button
               onClick={onEnd}
               disabled={ending}
-              className="btn-primary w-full h-12 bg-danger hover:bg-danger/90 flex items-center justify-center gap-2 text-sm"
+              className="w-full h-12 bg-danger text-white font-semibold rounded-lg hover:bg-danger/90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm shadow-lg shadow-danger/20"
             >
               {ending ? (
-                <div className="spinner h-4 w-4 border-white border-t-transparent" />
+                <div className="spinner h-4 w-4 border-white" />
               ) : (
                 <>
                   <Square className="w-4 h-4 fill-current" />
@@ -86,26 +88,26 @@ export default function ExamSidebar({
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={onOpenEdit}
-              className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-transparent hover:bg-muted transition-colors gap-2 group"
-            >
-              <Settings className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Settings</span>
-            </button>
-
             {(exam.status === "closed" || exam.status === "in_progress") && (
               <Link
                 href={`/admin/exams/${examId}/analytics`}
-                className="flex flex-col items-center justify-center p-3 rounded-lg border border-border bg-transparent hover:bg-muted transition-colors gap-2 group"
+                className="flex flex-col items-center justify-center p-4 rounded-xl border border-border bg-card-hover/30 hover:bg-card-hover hover:border-border-hover transition-all gap-2 group"
               >
-                <BarChart2 className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Analytics</span>
+                <BarChart2 className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground">Analytics</span>
               </Link>
             )}
+
+            <button
+              onClick={onOpenEdit}
+              className="flex flex-col items-center justify-center p-4 rounded-xl border border-border bg-card-hover/30 hover:bg-card-hover hover:border-border-hover transition-all gap-2 group"
+            >
+              <Settings className="w-5 h-5 text-muted-foreground group-hover:text-accent transition-colors" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-foreground">Settings</span>
+            </button>
           </div>
 
-          <div className="pt-4 border-t border-border">
+          <div className="pt-4 mt-2 border-t border-border/50">
             <button
               onClick={onDelete}
               disabled={deleting}
@@ -120,50 +122,57 @@ export default function ExamSidebar({
 
       {/* Session Details */}
       <div className="card p-6">
-        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-6 flex items-center gap-2">
+        <h3 className="section-label mb-6 flex items-center gap-2">
           <Info className="w-3.5 h-3.5" />
           Session Intel
         </h3>
         
-        <div className="space-y-5">
+        <div className="space-y-6">
           {timeLeft !== null && (
-            <div className="p-4 rounded-lg bg-transparent border border-border flex flex-col items-center gap-1">
+            <div className="p-5 rounded-2xl bg-background-secondary border border-border/50 flex flex-col items-center gap-2 shadow-inner">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Remaining</span>
-              <span className="text-3xl font-mono font-medium text-foreground tracking-tighter">
+              <span className={`text-4xl font-mono font-bold tracking-tighter ${timeLeft < 300 ? 'text-danger' : 'text-foreground'}`}>
                 {formatTime(timeLeft)}
               </span>
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 text-xs font-medium">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-3.5 h-3.5" />
-                <span>Duration</span>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
+                  <Clock className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-medium">Duration</span>
               </div>
-              <span className="font-bold text-foreground">{Math.round(exam.duration_seconds / 60)}m</span>
+              <span className="text-sm font-bold text-foreground">{Math.round(exam.duration_seconds / 60)}m</span>
             </div>
             
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="w-3.5 h-3.5" />
-                <span>Capacity</span>
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
+                  <Users className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-medium">Capacity</span>
               </div>
-              <span className="font-bold text-foreground">
+              <span className="text-sm font-bold text-foreground">
                 {exam.capacity ? `${exam.capacity} slots` : "Unlimited"}
               </span>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <BarChart2 className="w-3.5 h-3.5" />
-                <span>Questions</span>
+            <div className="flex items-center justify-between group">
+              <div className="flex items-center gap-2.5 text-muted-foreground group-hover:text-foreground transition-colors">
+                <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center">
+                  <BarChart2 className="w-3.5 h-3.5" />
+                </div>
+                <span className="text-xs font-medium">Questions</span>
               </div>
-              <span className="font-bold text-foreground">{exam.questionsCount || 0} loaded</span>
+              <span className="text-sm font-bold text-foreground">{exam.questionsCount || 0} loaded</span>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 }

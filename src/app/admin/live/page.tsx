@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Activity, AlertTriangle, ArrowUpRight, Radio } from "lucide-react";
 
 interface Exam {
   id: string;
@@ -76,109 +77,120 @@ export default function LiveMonitor() {
 
   if (loading) {
     return (
-      <div className="screen-loader">
-        <div className="spinner" style={{ width: 40, height: 40 }} />
+      <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
+        <div className="spinner mb-4" style={{ width: 28, height: 28 }} />
+        <p className="section-label">Loading live data...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       {error && (
-        <div className="mb-4 p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm">
+        <div className="rounded-lg border border-danger/20 bg-danger-muted p-3 text-sm text-danger font-medium">
           {error}
         </div>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-border">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Live Exam Monitor</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time status of all active and waiting exams
+          <h1 className="text-2xl font-bold tracking-tight">Live Monitor</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Real-time status of active and waiting exams.
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded bg-success/10 text-success text-xs font-bold">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-success-muted text-success text-xs font-medium">
+          <Radio className="w-3 h-3 animate-pulse" />
           Auto-refreshing
         </div>
       </div>
 
       {exams.length === 0 ? (
-        <div className="card p-12 text-center">
-          <p className="text-muted-foreground">No exams are currently live or waiting</p>
+        <div className="card p-16 text-center">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-6 h-6 text-muted-foreground" />
+          </div>
+          <h3 className="text-base font-semibold">No live exams</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            No exams are currently live or in the waiting room.
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {exams.map((exam) => {
             const progress = Math.min((exam.participant_count / exam.capacity) * 100, 100);
-            
+            const isLive = exam.status === "in_progress";
+
             return (
               <Link
                 key={exam.id}
                 href={`/admin/exams/${exam.id}`}
-                className="card p-5 hover:border-border-hover transition-colors duration-150 group"
+                className="card p-5 hover:border-border-hover transition-all duration-150 group"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="font-bold text-foreground group-hover:text-primary transition-colors duration-150 line-clamp-1">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-[15px] text-foreground group-hover:text-accent transition-colors line-clamp-1 leading-snug">
                       {exam.title}
                     </h3>
-                    <p className="text-xs font-mono text-primary font-bold mt-1">
+                    <p className="text-xs font-mono text-muted-foreground mt-0.5">
                       {exam.exam_code}
                     </p>
                   </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${
-                    exam.status === 'in_progress' 
-                      ? 'bg-primary/10 text-primary border-primary/20' 
-                      : 'bg-warning/10 text-warning border-warning/20'
+                  <span className={`badge flex-shrink-0 ml-2 ${
+                    isLive ? "badge-accent" : "badge-warning"
                   }`}>
-                    {exam.status.replace('_', ' ')}
+                    {exam.status.replace("_", " ")}
                   </span>
                 </div>
 
                 <div className="space-y-4">
+                  {/* Stats grid */}
                   <div className="grid grid-cols-3 gap-2">
-                    <div className="p-2 rounded bg-warning/5 border border-warning/10 text-center">
-                      <p className="text-sm font-bold text-warning">{exam.waiting_count || 0}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">Waiting</p>
+                    <div className="p-2.5 rounded-lg bg-warning-muted/50 text-center">
+                      <p className="text-sm font-bold text-warning tabular-nums">{exam.waiting_count || 0}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Waiting</p>
                     </div>
-                    <div className="p-2 rounded bg-primary/5 border border-primary/10 text-center">
-                      <p className="text-sm font-bold text-primary">{exam.active_count || 0}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">Active</p>
+                    <div className="p-2.5 rounded-lg bg-accent-muted/50 text-center">
+                      <p className="text-sm font-bold text-accent tabular-nums">{exam.active_count || 0}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Active</p>
                     </div>
-                    <div className="p-2 rounded bg-success/5 border border-success/10 text-center">
-                      <p className="text-sm font-bold text-success">{exam.submitted_count || 0}</p>
-                      <p className="text-[10px] text-muted-foreground uppercase">Done</p>
+                    <div className="p-2.5 rounded-lg bg-success-muted/50 text-center">
+                      <p className="text-sm font-bold text-success tabular-nums">{exam.submitted_count || 0}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Done</p>
                     </div>
                   </div>
 
+                  {/* Progress bar */}
                   <div>
                     <div className="flex justify-between text-xs mb-1.5">
-                      <span className="text-muted-foreground font-medium text-[10px] uppercase">Total Enrollment</span>
-                      <span className="text-foreground font-bold">{exam.participant_count} / {exam.capacity}</span>
+                      <span className="text-muted-foreground">Enrollment</span>
+                      <span className="font-medium tabular-nums">{exam.participant_count}/{exam.capacity}</span>
                     </div>
-                    <div className="w-full h-1.5 bg-border/50 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-200 ${
-                          exam.status === 'in_progress' ? 'bg-primary' : 'bg-warning'
-                        }`}
+                    <div className="progress-track">
+                      <div
+                        className={`progress-fill ${isLive ? "bg-accent" : "bg-warning"}`}
                         style={{ width: `${progress}%` }}
                       />
                     </div>
                   </div>
 
+                  {/* Tab switches alert */}
                   {exam.total_tab_switches && exam.total_tab_switches > 0 ? (
-                    <div className="flex items-center gap-2 p-2 rounded bg-danger/5 border border-danger/10 text-danger text-[10px] font-bold">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                      {exam.total_tab_switches} TAB SWITCHES DETECTED
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-danger-muted text-danger text-xs font-medium">
+                      <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+                      {exam.total_tab_switches} tab switches detected
                     </div>
                   ) : null}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px]">
-                    <span className="text-muted-foreground">
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-3 border-t border-border">
+                    <span className="text-xs text-muted-foreground">
                       {Math.round(exam.duration_seconds / 60)} min
                     </span>
-                    <span className="text-primary font-bold">
-                      Control Exam →
+                    <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-accent transition-colors">
+                      Details
+                      <ArrowUpRight className="w-3 h-3" />
                     </span>
                   </div>
                 </div>

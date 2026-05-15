@@ -12,20 +12,24 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return <div className="w-10 h-10 p-2.5 rounded border border-border" />;
+    return <div className="w-8 h-8 rounded-md border border-border bg-transparent" />;
   }
 
   return (
     <button
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-      className="p-2.5 rounded border border-border text-muted-foreground hover:bg-card-hover hover:text-foreground transition-colors duration-150 flex items-center justify-center w-10 h-10"
+      className="w-8 h-8 p-0 rounded-md border border-transparent bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted hover:border-border flex items-center justify-center transition-all duration-150"
       aria-label="Toggle theme"
     >
-      {resolvedTheme === "dark" ? (
-        <Sun className="h-5 w-5" aria-hidden="true" />
-      ) : (
-        <Moon className="h-5 w-5" aria-hidden="true" />
-      )}
+      <div className="relative w-4 h-4">
+        <Sun className={`absolute inset-0 h-4 w-4 transition-all duration-200 ${
+          resolvedTheme === "dark" ? "scale-100 rotate-0 opacity-100" : "scale-0 -rotate-90 opacity-0"
+        }`} aria-hidden="true" />
+        <Moon className={`absolute inset-0 h-4 w-4 transition-all duration-200 ${
+          resolvedTheme === "dark" ? "scale-0 rotate-90 opacity-0" : "scale-100 rotate-0 opacity-100"
+        }`} aria-hidden="true" />
+      </div>
     </button>
   );
 }
+

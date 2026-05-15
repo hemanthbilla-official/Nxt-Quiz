@@ -8,8 +8,11 @@ import {
   Edit2, 
   Trash2, 
   Database, 
-  X 
+  X,
+  AlertTriangle
 } from "lucide-react";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { toast } from "react-toastify";
 
 interface Option {
   id: string;
@@ -41,7 +44,6 @@ export default function QuestionBank() {
 
   const [submitting, setSubmitting] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  const [isDeletingSections, setIsDeletingSections] = useState(false);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [selectedSections, setSelectedSections] = useState<Record<string, boolean>>({});
@@ -63,166 +65,57 @@ export default function QuestionBank() {
     tags: [],
   });
 
-  const handleDownloadTemplate = () => {
-    const template = [
-      {
-        id: "q-1-theory",
-        topic: "React Basics",
-        difficulty: "Basic",
-        questionType: "theory",
-        question: "Which hook is used to manage side effects in React?",
-        options: [
-          { id: "A", text: "useState" },
-          { id: "B", text: "useEffect" },
-          { id: "C", text: "useContext" },
-          { id: "D", text: "useReducer" },
-        ],
-        correctOptionId: "B",
-        explanation: "useEffect is designed to handle side effects in functional components.",
-        tags: ["react", "hooks"],
-        points: 1
-      },
-      {
-        id: "q-2-code-output",
-        topic: "JavaScript Scopes",
-        difficulty: "Intermediate",
-        questionType: "code-output",
-        question: "What is the output of the following code snippet?",
-        codeSnippet: "let x = 1;\nif (true) {\n  let x = 2;\n}\nconsole.log(x);",
-        options: [
-          { id: "A", text: "1" },
-          { id: "B", text: "2" },
-          { id: "C", "text": "undefined" },
-          { id: "D", "text": "ReferenceError" },
-        ],
-        correctOptionId: "A",
-        explanation: "let is block-scoped, so the x inside the if block does not affect the outer x.",
-        tags: ["javascript", "scope"],
-        points: 2
-      },
-      {
-        id: "q-3-prog-func",
-        topic: "JavaScript Algorithms",
-        difficulty: "Intermediate",
-        questionType: "programming",
-        question: "Write a function `sumArray` that returns the sum of all numbers in an array.",
-        challengeMode: "function",
-        language: "javascript",
-        functionName: "sumArray",
-        starterCode: "function sumArray(arr) {\n  // Your code here\n  return 0;\n}",
-        testCases: [
-          { inputs: [[1, 2, 3]], expected: 6 },
-          { inputs: [[-1, 5, 2]], expected: 6 },
-          { inputs: [[]], expected: 0 }
-        ],
-        tags: ["algorithms", "arrays"],
-        points: 5
-      },
-      {
-        id: "q-4-prog-react",
-        topic: "React Components",
-        difficulty: "Advanced",
-        questionType: "programming",
-        question: "Create a React component named `Greeting` that accepts a `name` prop and renders an `<h1>` containing 'Hello, {name}!'.",
-        challengeMode: "component",
-        language: "javascript",
-        functionName: "Greeting",
-        starterCode: "import React from 'react';\n\nexport default function Greeting({ name }) {\n  return (\n    <div>\n      {/* Your code here */}\n    </div>\n  );\n}",
-        testCases: [
-          { inputs: [{ name: "Alice" }], expected: "Hello, Alice!" },
-          { inputs: [{ name: "Bob" }], expected: "Hello, Bob!" }
-        ],
-        tags: ["react", "components", "jsx"],
-        points: 10
-      }
-    ];
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "info" | "warning" | "danger";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
 
-    const blob = new Blob([JSON.stringify(template, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "quiz_template_detailed.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const [isHardResetting, setIsHardReset_Modal] = useState(false);
+  const [hardResetInput, setHardResetInput] = useState("");
 
   const toggleSection = (sectionName: string) => {
     setOpenSections((prev) => ({ ...prev, [sectionName]: !prev[sectionName] }));
   };
 
-  const toggleSectionCheckbox = (sectionName: string) => {
-    setSelectedSections((prev) => ({ ...prev, [sectionName]: !prev[sectionName] }));
+  const toggleQuestionSelection = (id: string) => {
+    setSelectedQuestions(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const toggleAllSections = (allSections: string[]) => {
-    const allSelected = allSections.every((s) => selectedSections[s]);
-    const next: Record<string, boolean> = {};
-    allSections.forEach((s) => (next[s] = !allSelected));
-    setSelectedSections(next);
+  const toggleAllQuestionsInSection = (examName: string, qs: Question[]) => {
+    const sectionQs = qs.map(q => q.id);
+    const allSelected = sectionQs.length > 0 && sectionQs.every(id => selectedQuestions[id]);
+    const next = { ...selectedQuestions };
+    sectionQs.forEach(id => next[id] = !allSelected);
+    setSelectedQuestions(next);
   };
 
-  const downloadFile = (data: object, filename: string) => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const getQuestionFingerprint = (q: Question): string => {
-    const questionText = q.question.trim().toLowerCase();
-    const opts: Option[] = typeof q.options === "string" ? JSON.parse(q.options) : (q.options || []);
-    const optionTexts = opts
-      .map((o) => o.text.trim().toLowerCase())
-      .sort()
-      .join("|");
-    return `${questionText}::${optionTexts}`;
-  };
-
-  const handleDownloadQuestions = (grouped: Record<string, Question[]>) => {
-    const checkedKeys = Object.keys(selectedSections).filter((k) => selectedSections[k]);
-    const sectionsToExport = checkedKeys.length > 0 ? checkedKeys : Object.keys(grouped);
-
-    const seen = new Set<string>();
-    const deduped: Question[] = [];
-    sectionsToExport.forEach((section) => {
-      (grouped[section] || []).forEach((q) => {
-        const fingerprint = getQuestionFingerprint(q);
-        if (!seen.has(fingerprint)) {
-          seen.add(fingerprint);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { exam_questions: _exam_questions, ...clean } = q;
-          deduped.push(clean as Question);
-        }
-      });
-    });
-
-    const filename = checkedKeys.length > 0
-      ? `questions_selected_${checkedKeys.length}_sections.json`
-      : "questions_all.json";
-    downloadFile(deduped, filename);
-  };
-
-  const fetchQuestionsOld = useCallback(async () => {
-    const res = await fetch("/api/admin/questions");
-    if (res.ok) {
-      const data = await res.json();
-      setQuestions(data.questions || []);
+  const fetchQuestions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/questions");
+      if (res.ok) {
+        const data = await res.json();
+        setQuestions(data.questions || []);
+      }
+    } catch (err) {
+      toast.error("Failed to load questions");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchQuestionsOld();
-  }, [fetchQuestionsOld]);
+    fetchQuestions();
+  }, [fetchQuestions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -240,6 +133,7 @@ export default function QuestionBank() {
       });
 
       if (res.ok) {
+        toast.success(editingId ? "Question updated" : "Question created");
         await fetchQuestions();
         setEditingId(null);
         setShowAdd(false);
@@ -257,24 +151,19 @@ export default function QuestionBank() {
           explanation: "",
           tags: [],
         });
+      } else {
+        toast.error("Failed to save question");
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure? This will remove the question from all exams."))
-      return;
-    const res = await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
-    if (res.ok) fetchQuestions();
-  };
-
   const handleHardReset = async () => {
-    const confirmText = prompt(
-      'CRITICAL: This will PERMANENTLY delete ALL exams, ALL student attempts, and ALL questions from the entire database. Type "WIPE EVERYTHING" to confirm:',
-    );
-    if (confirmText !== "WIPE EVERYTHING") return;
+    if (hardResetInput !== "WIPE EVERYTHING") {
+      toast.warning("Verification text doesn't match");
+      return;
+    }
 
     setIsDeletingAll(true);
     try {
@@ -284,10 +173,12 @@ export default function QuestionBank() {
         body: JSON.stringify({ confirmation: "WIPE DATABASE" }),
       });
       if (res.ok) {
-        alert("Database has been completely wiped clean.");
+        toast.success("Database wiped successfully");
+        setIsHardReset_Modal(false);
+        setHardResetInput("");
         fetchQuestions();
       } else {
-        alert("Wipe failed.");
+        toast.error("Wipe failed");
       }
     } finally {
       setIsDeletingAll(false);
@@ -334,24 +225,6 @@ export default function QuestionBank() {
   const availableExams = Object.keys(groupedQuestions).sort();
 
   const [selectedQuestions, setSelectedQuestions] = useState<Record<string, boolean>>({});
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  const showToast = (message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
-  const toggleQuestionSelection = (id: string) => {
-    setSelectedQuestions(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const toggleAllQuestionsInSection = (examName: string, qs: Question[]) => {
-    const sectionQs = qs.map(q => q.id);
-    const allSelected = sectionQs.every(id => selectedQuestions[id]);
-    const next = { ...selectedQuestions };
-    sectionQs.forEach(id => next[id] = !allSelected);
-    setSelectedQuestions(next);
-  };
 
   const selectedCount = Object.values(selectedQuestions).filter(Boolean).length;
 
@@ -359,25 +232,32 @@ export default function QuestionBank() {
     const ids = Object.keys(selectedQuestions).filter(id => selectedQuestions[id]);
     if (ids.length === 0) return;
     
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/admin/questions/bulk-delete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questionIds: ids }),
-      });
-      if (res.ok) {
-        showToast(`Successfully deleted ${ids.length} questions`);
-        setSelectedQuestions({});
-        await fetchQuestions();
-      } else {
-        showToast("Failed to delete questions", "error");
+    setConfirmModal({
+      isOpen: true,
+      title: "Bulk Delete",
+      message: `Are you sure you want to delete ${ids.length} selected questions? This will remove them from all exams.`,
+      type: "danger",
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setSubmitting(true);
+        try {
+          const res = await fetch("/api/admin/questions/bulk-delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ questionIds: ids }),
+          });
+          if (res.ok) {
+            toast.success(`Deleted ${ids.length} questions`);
+            setSelectedQuestions({});
+            await fetchQuestions();
+          } else {
+            toast.error("Failed to delete questions");
+          }
+        } finally {
+          setSubmitting(false);
+        }
       }
-    } catch (err) {
-      showToast("An error occurred", "error");
-    } finally {
-      setSubmitting(false);
-    }
+    });
   };
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -387,37 +267,16 @@ export default function QuestionBank() {
     try {
       const res = await fetch(`/api/admin/questions/${id}`, { method: "DELETE" });
       if (res.ok) {
-        showToast("Question deleted");
+        toast.success("Question deleted");
         await fetchQuestions();
       } else {
-        showToast("Delete failed", "error");
+        toast.error("Delete failed");
       }
-    } catch (err) {
-      showToast("An error occurred", "error");
     } finally {
       setSubmitting(false);
       setDeleteConfirmId(null);
     }
   };
-
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/questions");
-      if (res.ok) {
-        const data = await res.json();
-        setQuestions(data.questions || []);
-      }
-    } catch (err) {
-      showToast("Failed to load questions", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions]);
 
   if (loading) {
     return (
@@ -432,63 +291,53 @@ export default function QuestionBank() {
     : Object.entries(groupedQuestions).filter(([n]) => n === selectedExamName);
 
   return (
-    <div className="space-y-6 pb-20 relative">
-      {/* Toast Notification */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-[100] px-4 py-2 rounded-md shadow-lg border animate-fade-in ${
-          toast.type === "success" ? "bg-success/10 border-success text-success" : "bg-danger/10 border-danger text-danger"
-        }`}>
-          {toast.message}
-        </div>
-      )}
-
+    <div className="space-y-6 pb-20 relative animate-fade-in">
       {/* Floating Bulk Actions */}
       {selectedCount > 0 && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-fade-in">
-          <div className="bg-foreground text-background px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 border border-border/10">
-            <span className="text-sm font-bold">{selectedCount} questions selected</span>
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 animate-slide-up">
+          <div className="bg-foreground text-background px-5 py-2.5 rounded-lg shadow-2xl flex items-center gap-4 border border-border/10">
+            <span className="text-sm font-medium">{selectedCount} selected</span>
             <div className="h-4 w-px bg-background/20" />
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={handleBulkDelete}
-                disabled={submitting}
-                className="text-sm font-bold text-danger hover:text-danger/80 disabled:bg-muted disabled:text-muted-foreground"
-              >
-                Delete Selected
-              </button>
-              <button 
-                onClick={() => setSelectedQuestions({})}
-                className="text-sm font-bold hover:opacity-80"
-              >
-                Clear
-              </button>
-            </div>
+            <button 
+              onClick={handleBulkDelete}
+              disabled={submitting}
+              className="text-sm font-medium text-danger hover:text-danger/80"
+            >
+              Delete
+            </button>
+            <button 
+              onClick={() => setSelectedQuestions({})}
+              className="text-sm font-medium hover:opacity-80"
+            >
+              Clear
+            </button>
           </div>
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-5 border-b border-border">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Question Bank</h1>
-          <p className="text-sm text-muted-foreground">Manage assessment content across all exams</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage assessment content across all exams</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative group max-w-xs w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <div className="flex items-center gap-2">
+          <div className="relative group w-52">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search questions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-card border border-border rounded-md text-sm focus:outline-none focus:border-foreground transition-colors placeholder:text-muted-foreground"
+              className="input w-full"
+              style={{ paddingLeft: "2.25rem" }}
             />
           </div>
           
           <select
             value={selectedExamName}
             onChange={(e) => setSelectedExamName(e.target.value)}
-            className="h-10 px-3 bg-transparent border border-border rounded-md text-sm focus:outline-none focus:border-foreground"
+            className="input w-auto"
           >
             <option value="All">All Exams</option>
             {availableExams.map(exam => (
@@ -498,10 +347,18 @@ export default function QuestionBank() {
 
           <button
             onClick={() => { setEditingId(null); setShowAdd(true); }}
-            className="btn-primary h-9 flex items-center gap-2"
+            className="btn-primary h-9 flex-shrink-0"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Add Question</span>
+          </button>
+
+          <button
+            onClick={() => setIsHardReset_Modal(true)}
+            className="btn-ghost h-9 w-9 p-0 text-danger hover:bg-danger/5"
+            title="System Hard Reset"
+          >
+            <AlertTriangle className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -515,7 +372,7 @@ export default function QuestionBank() {
           return (
             <div key={examName} className="card overflow-hidden">
               <div 
-                className="p-4 bg-card-hover/50 flex items-center gap-4 cursor-pointer select-none"
+                className="p-4 bg-muted/30 flex items-center gap-3 cursor-pointer select-none"
                 onClick={() => toggleSection(examName)}
               >
                 <input
@@ -528,12 +385,12 @@ export default function QuestionBank() {
                   className="w-4 h-4 rounded border-border"
                   onClick={e => e.stopPropagation()}
                 />
-                <div className={`transition-transform ${isOpen ? "rotate-0" : "-rotate-90"}`}>
+                <div className={`transition-transform duration-150 ${isOpen ? "rotate-0" : "-rotate-90"}`}>
                   <ChevronDown className="w-4 h-4 text-muted-foreground" />
                 </div>
-                <h2 className="flex-1 font-bold text-sm">{examName}</h2>
-                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider">
-                  {qs.length} Questions
+                <h2 className="flex-1 font-semibold text-sm">{examName}</h2>
+                <span className="badge badge-accent text-[10px]">
+                  {qs.length}
                 </span>
               </div>
               
@@ -542,11 +399,11 @@ export default function QuestionBank() {
                   <table className="w-full text-sm">
                     <thead className="bg-card border-b border-border sticky top-0 z-10">
                       <tr>
-                        <th className="p-4 w-10"></th>
-                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Question</th>
-                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Topic</th>
-                        <th className="p-4 text-left font-medium text-muted-foreground text-xs uppercase tracking-wider">Difficulty</th>
-                        <th className="p-4 text-right font-medium text-muted-foreground text-xs uppercase tracking-wider">Actions</th>
+                        <th className="table-header-cell w-10"></th>
+                        <th className="table-header-cell">Question</th>
+                        <th className="table-header-cell">Topic</th>
+                        <th className="table-header-cell">Difficulty</th>
+                        <th className="table-header-cell text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -556,9 +413,9 @@ export default function QuestionBank() {
                         return (
                           <tr 
                             key={q.id} 
-                            className={`border-b border-border/50 hover:bg-card-hover transition-colors ${isSelected ? "bg-primary/5" : ""}`}
+                            className={`border-b border-border hover:bg-card-hover transition-colors ${isSelected ? "bg-accent/5" : ""}`}
                           >
-                            <td className="p-4">
+                            <td className="table-cell">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
@@ -566,41 +423,41 @@ export default function QuestionBank() {
                                 className="w-4 h-4 rounded border-border"
                               />
                             </td>
-                            <td className="p-4">
+                            <td className="table-cell">
                               <div className="max-w-md">
-                                <p className="font-medium text-foreground line-clamp-1">{q.question}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5 uppercase tracking-tighter">
+                                <p className="font-medium text-foreground line-clamp-1 text-sm">{q.question}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
                                   {q.id}
                                 </p>
                               </div>
                             </td>
-                            <td className="p-4">
-                              <span className="text-xs px-2 py-0.5 bg-muted rounded border border-border text-muted-foreground">
+                            <td className="table-cell">
+                              <span className="badge badge-default">
                                 {q.topic}
                               </span>
                             </td>
-                            <td className="p-4">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                q.difficulty === "Basic" ? "bg-success/10 text-success" : "bg-warning/10 text-warning"
+                            <td className="table-cell">
+                              <span className={`badge ${
+                                q.difficulty === "Basic" ? "badge-success" : q.difficulty === "Intermediate" ? "badge-warning" : "badge-danger"
                               }`}>
                                 {q.difficulty}
                               </span>
                             </td>
-                            <td className="p-4 text-right">
+                            <td className="table-cell text-right">
                               <div className="flex items-center justify-end gap-1">
                                 {isConfirmingDelete ? (
                                   <div className="flex items-center gap-1.5 animate-fade-in">
                                     <button 
                                       onClick={() => handleDeleteConfirmed(q.id)}
-                                      className="text-[10px] font-bold text-danger hover:underline"
+                                      className="px-2 py-1 bg-danger text-white rounded-md text-[11px] font-medium hover:bg-danger/90 transition-colors"
                                     >
-                                      Confirm
+                                      Delete
                                     </button>
                                     <button 
                                       onClick={() => setDeleteConfirmId(null)}
-                                      className="text-[10px] font-bold text-muted-foreground hover:underline"
+                                      className="px-2 py-1 bg-muted rounded-md text-[11px] font-medium hover:bg-card-hover transition-colors"
                                     >
-                                      No
+                                      Cancel
                                     </button>
                                   </div>
                                 ) : (
@@ -613,7 +470,7 @@ export default function QuestionBank() {
                                     </button>
                                     <button
                                       onClick={() => setDeleteConfirmId(q.id)}
-                                      className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger/10 rounded-md transition-colors"
+                                      className="p-1.5 text-muted-foreground hover:text-danger hover:bg-danger-muted rounded-md transition-colors"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
@@ -656,17 +513,17 @@ export default function QuestionBank() {
       </div>
 
       {showAdd && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="modal-overlay">
           <div 
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" 
+            className="absolute inset-0" 
             onClick={() => setShowAdd(false)}
           />
-          <div className="relative w-full max-w-3xl bg-card border border-border rounded-lg shadow-xl animate-fade-in max-h-[90vh] flex flex-col">
+          <div className="modal-content max-w-3xl max-h-[90vh] flex flex-col relative">
             <div className="p-5 border-b border-border flex items-center justify-between">
-              <h2 className="text-lg font-medium">
+              <h2 className="text-base font-semibold">
                 {editingId ? "Edit Question" : "Add Question"}
               </h2>
-              <button onClick={() => setShowAdd(false)} className="p-2 text-muted-foreground hover:text-foreground">
+              <button onClick={() => setShowAdd(false)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -674,21 +531,21 @@ export default function QuestionBank() {
             <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 custom-scrollbar">
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Topic</label>
+                  <label className="text-xs font-medium text-muted-foreground">Topic</label>
                   <input
                     required
                     type="text"
                     value={form.topic}
                     onChange={e => setForm(prev => ({ ...prev, topic: e.target.value }))}
-                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
+                    className="input w-full h-10"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Difficulty</label>
+                  <label className="text-xs font-medium text-muted-foreground">Difficulty</label>
                   <select
                     value={form.difficulty}
                     onChange={e => setForm(prev => ({ ...prev, difficulty: e.target.value }))}
-                    className="w-full h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
+                    className="input w-full h-10"
                   >
                     <option value="Basic">Basic</option>
                     <option value="Intermediate">Intermediate</option>
@@ -698,17 +555,17 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Question Type</label>
+                <label className="text-xs font-medium text-muted-foreground">Question Type</label>
                 <div className="flex gap-4">
                   {["theory", "code-output", "programming"].map(type => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setForm(prev => ({ ...prev, question_type: type }))}
-                      className={`px-4 py-2 rounded-md border text-xs font-bold uppercase tracking-wider transition-all ${
+                      className={`px-3 py-1.5 rounded-md border text-xs font-medium transition-all ${
                         form.question_type === type 
-                          ? "bg-primary/10 border-primary text-primary" 
-                          : "border-border text-muted-foreground hover:border-muted"
+                          ? "bg-accent/10 border-accent text-accent" 
+                          : "border-border text-muted-foreground hover:border-border-hover"
                       }`}
                     >
                       {type}
@@ -718,25 +575,25 @@ export default function QuestionBank() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Question Body</label>
+                <label className="text-xs font-medium text-muted-foreground">Question Body</label>
                 <textarea
                   required
                   rows={4}
                   value={form.question}
                   onChange={e => setForm(prev => ({ ...prev, question: e.target.value }))}
-                  className="w-full p-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors resize-none"
+                  className="w-full p-3 bg-input-bg border border-border rounded-md focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-all resize-none text-sm"
                   placeholder="Enter the question text..."
                 />
               </div>
 
               {(form.question_type === "code-output" || form.question_type === "programming") && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Code Snippet</label>
+                  <label className="text-xs font-medium text-muted-foreground">Code Snippet</label>
                   <textarea
                     rows={6}
                     value={form.code_snippet || ""}
                     onChange={e => setForm(prev => ({ ...prev, code_snippet: e.target.value }))}
-                    className="w-full p-4 bg-muted/50 border border-border rounded-md font-mono text-sm focus:outline-none focus:border-foreground transition-colors resize-none"
+                    className="w-full p-3 bg-muted/30 border border-border rounded-md font-mono text-sm focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-all resize-none"
                     placeholder="// Enter code here..."
                   />
                 </div>
@@ -744,17 +601,17 @@ export default function QuestionBank() {
 
               {form.question_type !== "programming" && (
                 <div className="space-y-4">
-                  <label className="text-sm font-medium text-muted-foreground">Options</label>
+                  <label className="text-xs font-medium text-muted-foreground">Options</label>
                   <div className="grid grid-cols-1 gap-3">
                     {(form.options || []).map((opt, idx) => (
                       <div key={opt.id} className="flex gap-3">
                         <button
                           type="button"
                           onClick={() => setForm(prev => ({ ...prev, correct_option_id: opt.id }))}
-                          className={`w-11 h-11 rounded-md border font-bold transition-all ${
+                          className={`w-10 h-10 rounded-md border-2 font-semibold text-sm transition-all ${
                             form.correct_option_id === opt.id 
-                              ? "bg-success text-primary-foreground border-success" 
-                              : "border-border text-muted-foreground hover:border-muted"
+                              ? "bg-success border-success text-white" 
+                              : "border-border text-muted-foreground hover:border-border-hover"
                           }`}
                         >
                           {opt.id}
@@ -768,8 +625,8 @@ export default function QuestionBank() {
                             next[idx] = { ...next[idx], text: e.target.value };
                             setForm(prev => ({ ...prev, options: next }));
                           }}
-                          className="flex-1 h-11 px-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors"
-                          placeholder={`Option ${opt.id} text...`}
+                          className="input h-10 flex-1"
+                          placeholder={`Option ${opt.id}...`}
                         />
                       </div>
                     ))}
@@ -778,37 +635,88 @@ export default function QuestionBank() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Explanation</label>
+                <label className="text-xs font-medium text-muted-foreground">Explanation</label>
                 <textarea
                   rows={3}
                   value={form.explanation}
                   onChange={e => setForm(prev => ({ ...prev, explanation: e.target.value }))}
-                  className="w-full p-4 bg-background border border-border rounded-md focus:outline-none focus:border-foreground transition-colors resize-none"
+                  className="w-full p-3 bg-input-bg border border-border rounded-md focus:outline-none focus:border-foreground focus:ring-2 focus:ring-foreground/5 transition-all resize-none text-sm"
                   placeholder="Explain the correct answer..."
                 />
               </div>
 
-              <div className="pt-4 border-t border-border flex gap-3">
+              <div className="pt-4 border-t border-border flex gap-2">
                 <button
                   type="button"
                   onClick={() => setShowAdd(false)}
-                  className="btn-secondary flex-1 h-12"
+                  className="btn-secondary flex-1 h-10"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-primary flex-1 h-12 flex items-center justify-center gap-2"
+                  className="btn-primary flex-1 h-10"
                 >
-                  {submitting && <div className="spinner h-4 w-4 border-white border-t-transparent" />}
-                  {editingId ? "Update Question" : "Save Question"}
+                  {submitting && <div className="spinner h-4 w-4" style={{ borderTopColor: 'white' }} />}
+                  {editingId ? "Update" : "Save"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* Hard Reset Modal */}
+      {isHardResetting && (
+        <div className="modal-overlay">
+          <div className="modal-content max-w-md">
+            <div className="p-6">
+              <div className="w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground mb-2">System Hard Reset</h2>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                CRITICAL: This will PERMANENTLY delete ALL exams, ALL student attempts, and ALL questions from the entire database. This action cannot be reversed.
+              </p>
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type &quot;WIPE EVERYTHING&quot; to confirm</label>
+                <input 
+                  type="text"
+                  value={hardResetInput}
+                  onChange={e => setHardResetInput(e.target.value)}
+                  placeholder="Verification text"
+                  className="input w-full h-12 border-danger/30 focus:border-danger focus:ring-danger/5"
+                />
+              </div>
+              <div className="flex gap-3 mt-8">
+                <button 
+                  onClick={() => { setIsHardReset_Modal(false); setHardResetInput(""); }}
+                  className="btn-secondary flex-1 h-11"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleHardReset}
+                  disabled={isDeletingAll || hardResetInput !== "WIPE EVERYTHING"}
+                  className="btn-destructive flex-1 h-11"
+                >
+                  {isDeletingAll ? "Wiping..." : "WIPE DATABASE"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }

@@ -2,17 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { 
-  Plus, 
-  Search, 
-  Users, 
-  Clock, 
-  Calendar, 
-  ChevronRight,
+import {
+  Plus,
+  Search,
+  Users,
+  Clock,
+  Calendar,
   Inbox,
-  Activity,
-  ArrowUpRight,
-  Layers
+  ArrowRight
 } from "lucide-react";
 
 interface Exam {
@@ -48,18 +45,18 @@ export default function AdminDashboard() {
     fetchExams();
   }, []);
 
-  const statusConfig: Record<string, { label: string; class: string }> = {
-    draft: { label: "Draft", class: "bg-muted/10 text-muted-foreground border-muted/20" },
-    waiting: { label: "Waiting", class: "bg-warning/10 text-warning border-warning/20" },
-    in_progress: { label: "Live", class: "bg-primary/10 text-primary border-primary/20" },
-    closed: { label: "Closed", class: "bg-success/10 text-success border-success/20" },
+  const statusConfig: Record<string, { label: string; badgeClass: string; dotClass: string }> = {
+    draft: { label: "Draft", badgeClass: "text-muted-foreground bg-muted border-border", dotClass: "bg-muted-foreground" },
+    waiting: { label: "Waiting", badgeClass: "text-warning bg-warning-muted border-warning/20", dotClass: "bg-warning" },
+    in_progress: { label: "Live", badgeClass: "text-accent bg-accent-muted border-accent/20", dotClass: "bg-accent animate-pulse" },
+    closed: { label: "Closed", badgeClass: "text-success bg-success-muted border-success/20", dotClass: "bg-success" },
   };
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
-        <div className="spinner mb-4 h-8 w-8" />
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Orchestrating Dashboard...</p>
+        <div className="spinner mb-4" style={{ width: 24, height: 24 }} />
+        <p className="text-sm text-muted-foreground font-medium">Loading assessments...</p>
       </div>
     );
   }
@@ -71,110 +68,134 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto py-4 space-y-10 animate-fade-in">
-      {/* Header Section */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border pb-8">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">System Overview</h1>
-          <p className="text-sm text-muted-foreground">Monitor and manage your assessment pipeline.</p>
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Assessments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your deployed assessments and monitor live sessions.
+          </p>
         </div>
-        
-        <Link href="/admin/exams/new" className="btn-primary h-11 px-6 flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          <span>Create Assessment</span>
-        </Link>
-      </div>
-
-      {/* Main Content Card */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Layers className="w-4 h-4" />
-            <h2 className="text-sm font-bold uppercase tracking-widest">Exam Repository</h2>
-          </div>
-
-          <div className="relative max-w-xs w-full group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Filter by title or code..." 
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search assessments..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-9 bg-background border border-border rounded-md pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-primary/10 focus:border-primary outline-none transition-all"
+              className="input w-full bg-background border-border hover:border-border-hover focus:border-foreground focus:ring-0 shadow-sm transition-colors"
+              style={{ paddingLeft: "2.25rem" }}
             />
           </div>
+          <Link href="/admin/exams/new" className="h-9 px-4 inline-flex items-center justify-center gap-2 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity shrink-0 shadow-sm">
+            <Plus className="w-4 h-4" />
+            <span>Create</span>
+          </Link>
         </div>
+      </div>
 
+      {/* List/Table Hybrid */}
+      <div className="space-y-4">
         {filteredExams.length === 0 ? (
-          <div className="card overflow-hidden">
-            <div className="p-20 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-6">
-                <Inbox className="w-8 h-8 text-muted-foreground/30" />
-              </div>
-              <h3 className="text-lg font-bold">
-                {searchQuery ? "No matching records" : "Repository empty"}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto mb-8">
-                {searchQuery 
-                  ? "Adjust your search parameters to find the specific assessment." 
-                  : "Begin by creating your first exam to see it listed here in the repository."}
-              </p>
-              {!searchQuery && (
-                <Link href="/admin/exams/new" className="btn-secondary h-10 px-6 flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  <span>Initialize Repository</span>
-                </Link>
-              )}
+          <div className="flex flex-col items-center justify-center py-20 border border-dashed border-border rounded-lg bg-muted/10 text-center">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <Inbox className="w-5 h-5 text-muted-foreground" />
             </div>
+            <h3 className="text-sm font-semibold text-foreground mb-1">
+              {searchQuery ? "No matching assessments" : "No assessments yet"}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-[250px]">
+              {searchQuery
+                ? "Try adjusting your search terms."
+                : "Create your first assessment to get started."}
+            </p>
+            {!searchQuery && (
+              <Link href="/admin/exams/new" className="h-9 px-4 inline-flex items-center justify-center bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity">
+                Create Assessment
+              </Link>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredExams.map((exam) => {
-              const config = statusConfig[exam.status] || statusConfig.draft;
-              return (
-                <Link
-                  key={exam.id}
-                  href={`/admin/exams/${exam.id}`}
-                  className="flex flex-col justify-between p-6 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all group"
-                >
-                  <div className="flex-1 min-w-0 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-primary/20 bg-primary/5 text-primary uppercase tracking-widest">
+          <div className="border border-border rounded-lg bg-card overflow-hidden shadow-sm">
+            {/* Table Header (Desktop only) */}
+            <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-border bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="col-span-4 pl-2">Assessment</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-2">Code</div>
+              <div className="col-span-3">Details</div>
+              <div className="col-span-1 text-right pr-2">Action</div>
+            </div>
+
+            {/* List Body */}
+            <div className="divide-y divide-border">
+              {filteredExams.map((exam) => {
+                const config = statusConfig[exam.status] || statusConfig.draft;
+                return (
+                  <Link
+                    key={exam.id}
+                    href={`/admin/exams/${exam.id}`}
+                    className="group flex flex-col md:grid md:grid-cols-12 gap-4 p-4 md:items-center hover:bg-muted/40 transition-colors"
+                  >
+                    {/* Title & Date */}
+                    <div className="md:col-span-4 flex flex-col gap-1 pl-2">
+                      <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors line-clamp-1">
+                        {exam.title}
+                      </h4>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3" />
+                        <span>
+                          {new Date(exam.created_at).toLocaleDateString(undefined, { 
+                            month: "short", 
+                            day: "numeric",
+                            year: "numeric"
+                          })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="md:col-span-2 flex items-center">
+                      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium ${config.badgeClass}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${config.dotClass}`} />
+                        {config.label}
+                      </div>
+                    </div>
+
+                    {/* Code */}
+                    <div className="md:col-span-2 flex items-center">
+                      <span className="font-mono text-xs px-2 py-1 rounded bg-muted/50 text-foreground border border-border/50">
                         {exam.exam_code}
                       </span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-widest ${config.class}`}>
-                        {config.label}
-                      </span>
                     </div>
-                    <h4 className="text-lg font-bold group-hover:text-primary transition-colors line-clamp-2">
-                      {exam.title}
-                    </h4>
-                    <div className="flex flex-col gap-2 pt-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+
+                    {/* Details (Participants & Duration) */}
+                    <div className="md:col-span-3 flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5" title="Participants">
                         <Users className="w-4 h-4" />
-                        <span>{exam.participant_count || 0} Students</span>
+                        <span>{exam.participant_count || 0}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+                      <div className="flex items-center gap-1.5" title="Duration">
                         <Clock className="w-4 h-4" />
-                        <span>{Math.round(exam.duration_seconds / 60)} Minutes</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-                        <Calendar className="w-4 h-4" />
-                        <span>{new Date(exam.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        <span>{Math.round(exam.duration_seconds / 60)}m</span>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div className="mt-8 pt-4 border-t border-border/50 flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">Control Panel</span>
-                    <ArrowUpRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                  </div>
-                </Link>
-              );
-            })}
+
+                    {/* Action */}
+                    <div className="md:col-span-1 flex items-center justify-end pr-2">
+                      <div className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-background border border-transparent group-hover:border-border transition-all">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
 }
+

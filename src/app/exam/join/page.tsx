@@ -4,6 +4,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { BarChart3, LogOut, Loader2, ArrowRight } from "lucide-react";
 
 export default function JoinExam() {
   const [examCode, setExamCode] = useState("");
@@ -66,59 +67,78 @@ export default function JoinExam() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="flex flex-col gap-3 px-4 sm:px-6 py-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-bold text-foreground">Nxt-Quiz</span>
+    <div className="min-h-screen flex flex-col bg-muted/30">
+      {/* Header */}
+      <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-background">
+        <div className="flex items-center gap-2.5">
+          <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
+            <span className="text-background font-bold text-[10px]">N</span>
+          </div>
+          <span className="text-sm font-semibold tracking-tight text-foreground">
+            Nxt-Quiz
+          </span>
         </div>
-        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
+        <div className="flex-1" />
+        <div className="flex items-center gap-4">
           <ThemeToggle />
           <button
             onClick={() => router.push("/scores")}
-            className="text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded transition-colors duration-150 flex items-center gap-2"
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2" />
-            </svg>
-            My Scores
+            <BarChart3 className="w-4 h-4" />
+            Scores
           </button>
-          <span className="text-sm text-muted-foreground">{userName}</span>
+          <div className="w-px h-4 bg-border hidden sm:block" />
+          <span className="text-xs font-medium text-foreground hidden sm:inline">
+            {userName}
+          </span>
           <button
             onClick={handleLogout}
             disabled={loggingOut}
-            className="text-xs text-muted-foreground hover:text-danger transition-colors duration-150 flex items-center gap-2"
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-danger transition-colors"
           >
-            {loggingOut && <div className="spinner" style={{ width: 10, height: 10 }} />}
-            {loggingOut ? "Signing out..." : "Sign Out"}
+            <LogOut className="w-4 h-4" />
+            {loggingOut ? "..." : "Sign Out"}
           </button>
         </div>
       </header>
 
+      {/* Main */}
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-foreground mb-1">
-              Join Exam
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Enter the Exam ID provided by your instructor
-            </p>
+        <div className="w-full max-w-[800px] animate-fade-in border border-border rounded-xl bg-background shadow-sm overflow-hidden flex flex-col md:flex-row">
+          {/* Left Side: Branding / Framing */}
+          <div className="md:w-5/12 bg-muted/20 p-8 md:p-12 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                Join Assessment
+              </h1>
+              <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                Enter the unique access code provided by your instructor to
+                enter the secure waiting room.
+              </p>
+            </div>
+            <div className="hidden md:block">
+              <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                Proctored Session
+              </div>
+            </div>
           </div>
 
-          <div className="card p-8">
-            <form onSubmit={handleJoin} className="space-y-6">
+          {/* Right Side: Form */}
+          <div className="md:w-7/12 p-8 md:p-12 flex flex-col justify-center">
+            <form onSubmit={handleJoin} className="space-y-6 max-w-sm">
               {error && (
-                <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
-                  {error}
+                <div className="p-3 rounded-md bg-danger-muted border border-danger/20 text-danger text-xs font-medium flex items-center gap-2 animate-fade-in">
+                  <span>{error}</span>
                 </div>
               )}
 
-              <div>
+              <div className="space-y-2">
                 <label
                   htmlFor="exam-code"
-                  className="block text-sm font-medium text-muted-foreground mb-2"
+                  className="block text-sm font-medium text-foreground"
                 >
-                  Exam Code
+                  Access Code
                 </label>
                 <input
                   id="exam-code"
@@ -126,7 +146,7 @@ export default function JoinExam() {
                   value={examCode}
                   onChange={(e) => setExamCode(e.target.value.toUpperCase())}
                   placeholder="e.g. RCT-A7X3"
-                  className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors duration-150 text-center text-lg font-mono tracking-widest"
+                  className="w-full h-11 bg-background border border-border rounded-md text-foreground font-mono text-base outline-none transition-colors focus:border-foreground hover:border-border-hover placeholder:text-muted-foreground/40 shadow-sm px-3 tracking-widest uppercase"
                   required
                   autoFocus
                   maxLength={20}
@@ -136,18 +156,20 @@ export default function JoinExam() {
               <button
                 type="submit"
                 disabled={loading || !examCode.trim()}
-                className="btn-primary w-full py-3 text-base shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent"
+                className="w-full h-10 flex items-center justify-center gap-2 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-4 group"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="spinner" />
-                    Joining...
-                  </span>
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Connecting...
+                  </>
                 ) : (
-                  "Enter Waiting Room"
+                  <>
+                    Enter Waiting Room
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </>
                 )}
               </button>
-
             </form>
           </div>
         </div>

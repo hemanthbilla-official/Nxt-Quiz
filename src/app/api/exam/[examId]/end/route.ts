@@ -37,13 +37,26 @@ export async function POST(
     );
   }
 
+  const submittedAt = new Date().toISOString();
+
+  // 1. Close the exam immediately so clients are notified via realtime
+  await supabase
+    .from("exams")
+    .update({
+      status: "closed",
+      closes_at: submittedAt,
+    })
+    .eq("id", examId);
+
+  // 2. Wait to allow clients to flush their pending answers and auto-submit
+  await new Promise(resolve => setTimeout(resolve, 2500));
+
+  // 3. Fetch any remaining active attempts (offline or slow clients)
   const { data: activeAttempts } = await supabase
     .from("attempts")
     .select("id, user_id")
     .eq("exam_id", examId)
     .eq("status", "active");
-
-  const submittedAt = new Date().toISOString();
 
   for (const attempt of activeAttempts || []) {
     const { totalScore, maxScore } = await scoreAttempt({
@@ -63,6 +76,7 @@ export async function POST(
       .eq("id", attempt.id);
   }
 
+  // Also close participants who are still active
   await supabase
     .from("exam_participants")
     .update({
@@ -71,14 +85,6 @@ export async function POST(
     })
     .eq("exam_id", examId)
     .eq("status", "active");
-
-  await supabase
-    .from("exams")
-    .update({
-      status: "closed",
-      closes_at: submittedAt,
-    })
-    .eq("id", examId);
 
   return NextResponse.json({ success: true });
 }

@@ -24,7 +24,7 @@ export async function GET(
 
   const { data: attempt } = await admin
     .from("attempts")
-    .select("submitted_at, status, total_score, max_score")
+    .select("submitted_at, server_started_at, status, total_score, max_score")
     .eq("exam_id", examId)
     .eq("user_id", userId)
     .single();
@@ -39,8 +39,28 @@ export async function GET(
     return NextResponse.json({ error: "Exam not found" }, { status: 404 });
   }
 
+  // Calculate rank
+  let rank = null;
+  let totalParticipants = 0;
+  if (attempt && attempt.total_score !== null) {
+    const { data: allAttempts } = await admin
+      .from("attempts")
+      .select("total_score")
+      .eq("exam_id", examId)
+      .eq("status", "submitted")
+      .not("total_score", "is", null);
+      
+    if (allAttempts) {
+      totalParticipants = allAttempts.length;
+      // Sort in descending order
+      const scores = allAttempts.map(a => a.total_score).sort((a, b) => b - a);
+      // Find the index of the user's score (1-based rank)
+      rank = scores.indexOf(attempt.total_score) + 1;
+    }
+  }
+
   return NextResponse.json({
-    attempt: attempt || null,
+    attempt: attempt ? { ...attempt, rank, totalParticipants } : null,
     exam: {
       title: exam.title,
       status: exam.status

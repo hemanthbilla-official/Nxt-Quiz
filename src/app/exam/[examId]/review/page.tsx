@@ -9,6 +9,7 @@ import { DEFAULT_EXAM_CONTROLS, type ExamControls } from "@/lib/exam-controls";
 import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 interface AnswerState {
   question_id: string;
@@ -138,6 +139,19 @@ export default function ReviewExam({
           }
         },
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "exams",
+          filter: `id=eq.${examId}`,
+        },
+        () => {
+          toast.error("This exam is no longer available.");
+          router.push("/exam/join");
+        }
+      )
       .subscribe();
 
     return () => {
@@ -153,7 +167,8 @@ export default function ReviewExam({
           if (res.status === 401) {
             router.push("/login");
           } else if (res.status === 404) {
-            router.push(`/exam/${examId}/submitted`);
+            toast.error("This exam is no longer available.");
+            router.push("/exam/join");
           }
           return;
         }
@@ -350,19 +365,19 @@ export default function ReviewExam({
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 bg-card/90 border-b border-border px-4 sm:px-6 py-3">
-        <div className="max-w-4xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-lg font-semibold text-foreground">
+      <header className="sticky top-0 z-50 bg-card/90 border-b border-border px-4 sm:px-5 py-3">
+        <div className="max-w-4xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-base font-semibold text-foreground">
             Review & Submit
           </h1>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {controls.themeToggleEnabled && <ThemeToggle />}
             {timeLeft !== null && (
               <div
-                className={`px-4 py-2 rounded font-mono font-bold text-lg ${
+                className={`px-3 py-1.5 rounded font-mono font-bold text-base border ${
                   isUrgent
-                    ? "bg-danger/10 text-danger animate-timer-urgent"
-                    : "bg-primary/10 text-primary"
+                    ? "bg-danger-muted text-danger border-danger/20"
+                    : "bg-background-secondary text-foreground border-border"
                 }`}
               >
                 {formatTime(timeLeft)}
@@ -372,37 +387,37 @@ export default function ReviewExam({
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="card p-5 text-center">
-            <p className="text-3xl font-bold text-success">{answered.length}</p>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <div className="card p-4 text-center">
+            <p className="text-2xl font-bold text-success">{answered.length}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <IconCheck /> Answered
             </p>
           </div>
           {controls.skipEnabled && (
-            <div className="card p-5 text-center">
-              <p className="text-3xl font-bold text-warning">
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-warning">
                 {skipped.length}
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
                 <IconSkip /> Skipped
               </p>
             </div>
           )}
           {controls.bookmarksEnabled && (
-            <div className="card p-5 text-center">
-              <p className="text-3xl font-bold text-secondary">
+            <div className="card p-4 text-center">
+              <p className="text-2xl font-bold text-accent">
                 {bookmarked.length}
               </p>
-              <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
                 <IconBookmark /> Bookmarked
               </p>
             </div>
           )}
-          <div className="card p-5 text-center">
-            <p className="text-3xl font-bold text-muted-foreground">{unanswered.length}</p>
-            <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+          <div className="card p-4 text-center">
+            <p className="text-2xl font-bold text-muted-foreground">{unanswered.length}</p>
+            <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
               <IconQuestion /> Unanswered
             </p>
           </div>
@@ -509,7 +524,7 @@ export default function ReviewExam({
             </div>
           ))}
 
-        <div className="mt-8 pt-6 border-t border-border flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-6 pt-5 border-t border-border flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button
             onClick={handleBackToExam}
             disabled={
@@ -518,10 +533,10 @@ export default function ReviewExam({
               isOpeningConfirm ||
               navigatingToQuestion !== null
             }
-            className="px-6 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all flex items-center gap-2 disabled:bg-muted disabled:text-muted-foreground"
+            className="btn-secondary h-9 text-sm gap-2"
           >
             {isNavigatingBack ? (
-              <div className="spinner" style={{ width: 16, height: 16 }} />
+              <div className="spinner" style={{ width: 14, height: 14 }} />
             ) : (
               <svg
                 className="w-4 h-4"
@@ -547,12 +562,12 @@ export default function ReviewExam({
               isNavigatingBack ||
               navigatingToQuestion !== null
             }
-            className="px-8 py-3 rounded text-sm font-semibold bg-success text-primary-foreground transition-all  flex items-center gap-2 disabled:bg-muted disabled:text-muted-foreground"
+            className="btn-primary h-9 text-sm gap-2"
           >
             {isOpeningConfirm ? (
               <div
                 className="spinner"
-                style={{ width: 16, height: 16, borderTopColor: "white" }}
+                style={{ width: 14, height: 14, borderTopColor: "white" }}
               />
             ) : (
               <>
@@ -644,17 +659,17 @@ export default function ReviewExam({
                 will be marked as unanswered.
               </div>
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 py-3 rounded text-sm font-medium bg-card border border-border text-foreground hover:bg-card-hover transition-all"
+                className="flex-1 btn-secondary h-9 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 py-3 rounded text-sm font-semibold bg-success text-primary-foreground transition-all disabled:bg-muted disabled:text-muted-foreground"
+                className="flex-1 btn-primary h-9 text-sm"
               >
                 {submitting ? (
                   <span className="flex items-center justify-center gap-2">
@@ -664,7 +679,6 @@ export default function ReviewExam({
                         width: 14,
                         height: 14,
                         borderTopColor: "white",
-                        borderColor: "rgba(255,255,255,0.3)",
                       }}
                     />
                     Submitting...

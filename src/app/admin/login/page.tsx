@@ -30,27 +30,31 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <FloatingThemeToggle />
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm animate-fade-in">
+        {/* Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground">Admin Portal</h1>
+          <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center mx-auto mb-4">
+            <span className="text-background font-bold text-sm">N</span>
+          </div>
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Admin Portal</h1>
           <p className="text-muted-foreground text-sm mt-1">
             Enter the admin password to continue
           </p>
         </div>
 
-        <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="card p-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
+              <div className="p-3 rounded-lg bg-danger-muted border border-danger/20 text-danger text-sm animate-fade-in">
                 {error}
               </div>
             )}
             <div>
               <label
                 htmlFor="admin-password"
-                className="block text-sm font-medium text-muted-foreground mb-2"
+                className="block text-xs font-medium text-muted-foreground mb-1.5"
               >
                 Password
               </label>
@@ -60,7 +64,7 @@ export default function AdminLogin() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter admin password"
-                className="w-full px-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors duration-150"
+                className="input w-full h-10"
                 autoFocus
                 required
               />
@@ -68,11 +72,11 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3 rounded border border-transparent bg-primary text-primary-foreground font-semibold transition-all duration-150 hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed"
+              className="btn-primary w-full h-10"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <div className="spinner" />
+                  <div className="spinner" style={{ width: 16, height: 16 }} />
                   Verifying...
                 </span>
               ) : (
@@ -82,12 +86,12 @@ export default function AdminLogin() {
           </form>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-5 text-center">
           <a
             href="/login"
-            className="text-xs text-muted-foreground hover:text-primary transition-colors duration-150"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            ← Back to Student Login
+            ← Student Login
           </a>
         </div>
       </div>

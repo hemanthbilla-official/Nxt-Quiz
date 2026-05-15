@@ -82,15 +82,26 @@ export async function GET(
     .eq("exam_id", examId)
     .order("position", { ascending: true });
 
-  // 5. All attempt answers for this exam (for per-option breakdown)
+  // 5. All attempt answers for this exam (for per-option breakdown and coding metrics)
   const attemptIds = (attempts || []).map((a) => a.id);
-  let allAnswers: { attempt_id: string; question_id: string; selected_option_id: string | null; is_bookmarked: boolean; is_skipped: boolean }[] = [];
+  let allAnswers: {
+    attempt_id: string;
+    question_id: string;
+    selected_option_id: string | null;
+    is_bookmarked: boolean;
+    is_skipped: boolean;
+    test_pass_count?: number;
+    test_fail_count?: number;
+    last_run_results?: any;
+    code_answer?: string;
+    code_language?: string;
+  }[] = [];
   
   if (attemptIds.length > 0) {
     // Fetch in batches if needed
     const { data: answers } = await supabase
       .from("attempt_answers")
-      .select("attempt_id, question_id, selected_option_id, is_bookmarked, is_skipped")
+      .select("attempt_id, question_id, selected_option_id, is_bookmarked, is_skipped, test_pass_count, test_fail_count, last_run_results, code_answer, code_language")
       .in("attempt_id", attemptIds);
     allAnswers = answers || [];
   }
@@ -203,13 +214,79 @@ export async function GET(
   const answersByQuestion = new Map<string, { A: number; B: number; C: number; D: number; skipped: number; bookmarked: number; totalSubmittedAnswers: number }>();
   // Track which students selected each option per question: questionId -> optionLetter -> studentName[]
   const optionStudentsByQuestion = new Map<string, { A: string[]; B: string[]; C: string[]; D: string[] }>();
+  
+  // Track coding specific metrics per question
+  interface CodingStats {
+    totalSubmissions: number;
+    passedSubmissions: number;
+    failedSubmissions: number;
+    totalExecutionTimeMs: number;
+    executionsWithTime: number;
+    failedTestCases: Record<string, number>; // testCaseId -> count
+    languageStats: Record<string, number>;
+    runtimeDistribution: Record<string, number>;
+  }
+  const codingStatsByQuestion = new Map<string, CodingStats>();
+
   allAnswers.forEach((ans) => {
     const isSubmitted = submittedAttemptsIds.has(ans.attempt_id);
     const entry = answersByQuestion.get(ans.question_id) || { A: 0, B: 0, C: 0, D: 0, skipped: 0, bookmarked: 0, totalSubmittedAnswers: 0 };
     const studentEntry = optionStudentsByQuestion.get(ans.question_id) || { A: [], B: [], C: [], D: [] };
+    const codingStats = codingStatsByQuestion.get(ans.question_id) || {
+      totalSubmissions: 0,
+      passedSubmissions: 0,
+      failedSubmissions: 0,
+      totalExecutionTimeMs: 0,
+      executionsWithTime: 0,
+      failedTestCases: {},
+      languageStats: {},
+      runtimeDistribution: {}
+    };
     
     if (isSubmitted) {
       entry.totalSubmittedAnswers++;
+      
+      // Update coding stats if test counts are available
+      if (ans.test_pass_count !== undefined && ans.test_fail_count !== undefined) {
+        codingStats.totalSubmissions++;
+        if (ans.test_fail_count === 0 && ans.test_pass_count > 0) {
+          codingStats.passedSubmissions++;
+        } else {
+          codingStats.failedSubmissions++;
+        }
+
+        // Language stats
+        const lang = ans.code_language || "javascript";
+        codingStats.languageStats[lang] = (codingStats.languageStats[lang] || 0) + 1;
+        
+        // Extract runtime and failed test cases from last_run_results
+        if (ans.last_run_results && Array.isArray(ans.last_run_results.results)) {
+          let totalRuntime = 0;
+          ans.last_run_results.results.forEach((res: any) => {
+            if (typeof res.runtimeMs === 'number') {
+              totalRuntime += res.runtimeMs;
+            }
+            if (!res.passed && res.testCaseId) {
+              codingStats.failedTestCases[res.testCaseId] = (codingStats.failedTestCases[res.testCaseId] || 0) + 1;
+            }
+          });
+          if (totalRuntime > 0) {
+            codingStats.totalExecutionTimeMs += totalRuntime;
+            codingStats.executionsWithTime++;
+            
+            // Bucket runtime into distribution (e.g. 0-50ms, 50-100ms, etc.)
+            let bucket = "";
+            if (totalRuntime <= 50) bucket = "0-50ms";
+            else if (totalRuntime <= 100) bucket = "50-100ms";
+            else if (totalRuntime <= 250) bucket = "100-250ms";
+            else if (totalRuntime <= 500) bucket = "250-500ms";
+            else if (totalRuntime <= 1000) bucket = "500-1000ms";
+            else bucket = ">1000ms";
+            codingStats.runtimeDistribution[bucket] = (codingStats.runtimeDistribution[bucket] || 0) + 1;
+          }
+        }
+        codingStatsByQuestion.set(ans.question_id, codingStats);
+      }
     }
 
     if (ans.selected_option_id) {
@@ -239,14 +316,31 @@ export async function GET(
 
     const topic = q?.topic || "Uncategorized";
     const difficulty = q?.difficulty || "Medium";
+    const questionType = q?.question_type || "theory";
+    const isProgramming = questionType === "programming";
+    const codingStats = codingStatsByQuestion.get(qId);
 
-    // Deduce correct counter directly
-    const correctLetter = q?.correct_option_id as "A" | "B" | "C" | "D" | undefined;
-    const correctCount = correctLetter ? (optionCounts[correctLetter as keyof typeof optionCounts] as number || 0) : 0;
-    
-    // total Responses that are NOT skipped
-    const answeredCount = optionCounts.A + optionCounts.B + optionCounts.C + optionCounts.D;
-    const wrongCount = answeredCount - correctCount;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let codingMetrics = undefined;
+
+    if (isProgramming && codingStats) {
+      correctCount = codingStats.passedSubmissions;
+      wrongCount = codingStats.failedSubmissions;
+      codingMetrics = {
+        totalSubmissions: codingStats.totalSubmissions,
+        avgExecutionTimeMs: codingStats.executionsWithTime > 0 ? Math.round(codingStats.totalExecutionTimeMs / codingStats.executionsWithTime) : 0,
+        failedTestCases: codingStats.failedTestCases
+      };
+    } else {
+      // Deduce correct counter directly for MCQ
+      const correctLetter = q?.correct_option_id as "A" | "B" | "C" | "D" | undefined;
+      correctCount = correctLetter ? (optionCounts[correctLetter as keyof typeof optionCounts] as number || 0) : 0;
+      
+      // total Responses that are NOT skipped
+      const answeredCount = optionCounts.A + optionCounts.B + optionCounts.C + optionCounts.D;
+      wrongCount = answeredCount - correctCount;
+    }
 
     const correctPercentage = submittedAttempts.length > 0
       ? Math.round((correctCount / submittedAttempts.length) * 10000) / 100
@@ -260,7 +354,7 @@ export async function GET(
       codeSnippet: q?.code_snippet || null,
       topic,
       difficulty,
-      questionType: q?.question_type || "theory",
+      questionType,
       options: parsedOptions,
       correctOptionId: q?.correct_option_id || "",
       explanation: q?.explanation || "",
@@ -278,6 +372,7 @@ export async function GET(
         D: optionCounts.D,
       },
       optionStudents: optionStudentsByQuestion.get(qId) || { A: [], B: [], C: [], D: [] },
+      codingMetrics,
     };
   });
 
@@ -337,6 +432,31 @@ export async function GET(
   const earlySubmissions = timeData.filter((t) => t < examDuration * 0.5).length;
   const onTimeSubmissions = timeData.filter((t) => t >= examDuration * 0.5 && t < examDuration * 0.9).length;
   const lateSubmissions = timeData.filter((t) => t >= examDuration * 0.9).length;
+
+  // Submission Timeline Graph
+  const validSubmissions = submittedAttempts
+    .map(a => a.submitted_at ? new Date(a.submitted_at).getTime() : 0)
+    .filter(t => t > 0)
+    .sort((a, b) => a - b);
+    
+  let submissionTimeline: { time: string; count: number }[] = [];
+  if (validSubmissions.length > 0) {
+    const firstTime = validSubmissions[0];
+    const lastTime = validSubmissions[validSubmissions.length - 1];
+    const durationMs = Math.max(lastTime - firstTime, 60000); // at least 1 min
+    const bucketCount = 10;
+    const bucketSize = durationMs / bucketCount;
+    
+    submissionTimeline = Array.from({ length: bucketCount }).map((_, i) => {
+      const start = firstTime + (i * bucketSize);
+      const end = start + bucketSize;
+      const count = validSubmissions.filter(t => t >= start && (i === bucketCount - 1 ? t <= end : t < end)).length;
+      
+      const date = new Date(start);
+      const label = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      return { time: label, count };
+    });
+  }
 
   // Student results with time-to-submit and grade
   const studentResults = submittedAttempts.map((a) => {
@@ -432,6 +552,7 @@ export async function GET(
       onTimeSubmissions,
       lateSubmissions,
       examDurationSeconds: examDuration,
+      submissionTimeline,
     },
     examHealth: {
       hardestQuestion: hardestQuestion ? { position: hardestQuestion.position, text: hardestQuestion.questionText, correctPct: hardestQuestion.correctPercentage } : null,

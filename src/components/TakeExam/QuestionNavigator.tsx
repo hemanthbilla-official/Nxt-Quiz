@@ -1,6 +1,7 @@
 import type { Question, AnswerState } from "@/lib/quizTypes";
 import { markExamNavigationIntent } from "@/lib/exam-navigation";
 import { useRouter } from "next/navigation";
+import { X, Grid3X3 } from "lucide-react";
 
 interface QuestionNavigatorProps {
   questions: Question[];
@@ -26,78 +27,80 @@ export function QuestionNavigator({
   return (
     <>
       <aside
-        className={`w-full lg:w-64 border-t lg:border-t-0 lg:border-l border-border p-4 overflow-y-auto lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-all ${
+        className={`w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-border/50 p-4 lg:p-5 overflow-y-auto lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-all bg-background-secondary/30 ${
           showNav ? "" : "hidden"
         }`}
       >
-        <div className="flex items-center justify-between mb-6 pb-2 border-b border-border/50">
+        <div className="flex items-center justify-between mb-5 pb-3 border-b border-border/50">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-foreground">Questions</h3>
-            <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold">
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
+            <span className="badge badge-accent">
               {questions.length}
             </span>
           </div>
           <button
             onClick={() => setShowNav(false)}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-danger/10 text-danger hover:bg-danger/20 transition-colors duration-150 text-[11px] font-bold uppercase tracking-wider"
+            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Hide
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-6 text-[11px] font-medium">
-          <div className="flex items-center gap-2 p-2 rounded bg-card border border-border/40">
-            <span className="w-2 h-2 rounded-full bg-success" />
-            <span className="text-muted-foreground">Answered</span>
+        {/* Legend */}
+        <div className="grid grid-cols-2 gap-2 mb-6">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+            <span className="text-[11px] font-medium text-muted-foreground">Answered</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded bg-card border border-border/40">
-            <span className="w-2 h-2 rounded-full bg-warning" />
-            <span className="text-muted-foreground">Skipped</span>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+            <span className="text-[11px] font-medium text-muted-foreground">Skipped</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded bg-card border border-border/40">
-            <span className="w-2 h-2 rounded-full bg-primary" />
-            <span className="text-muted-foreground">Bookmarked</span>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            <span className="text-[11px] font-medium text-muted-foreground">Flagged</span>
           </div>
-          <div className="flex items-center gap-2 p-2 rounded bg-card border border-border/40">
-            <span className="w-2 h-2 rounded-full bg-border" />
-            <span className="text-muted-foreground">Unanswered</span>
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
+            <span className="w-1.5 h-1.5 rounded-full bg-border" />
+            <span className="text-[11px] font-medium text-muted-foreground">To Do</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-2">
+        {/* Grid */}
+        <div className="grid grid-cols-4 gap-1.5">
           {questions.map((q, i) => {
             const a = answers[q.id];
             const isAnswered = !!(a?.selected_option_id || a?.code_answer?.trim());
             const isSkipped = !!a?.is_skipped;
             const isBookmarked = !!a?.is_bookmarked;
             const isCurrent = i === currentIndex;
-            
+
             return (
               <button
                 key={q.id}
                 onClick={() => setCurrentIndex(i)}
-                className={`q-dot flex flex-col items-center justify-between py-1.5 h-10 ${isCurrent ? "current" : ""}`}
+                className={`flex flex-col items-center justify-center h-10 rounded-lg transition-all border relative ${
+                  isCurrent 
+                    ? "border-accent bg-accent-muted ring-2 ring-accent/10" 
+                    : isAnswered
+                    ? "border-transparent bg-card hover:border-accent/30"
+                    : "border-transparent bg-background-secondary hover:border-border-hover"
+                }`}
                 title={`Question ${i + 1}`}
               >
-                <span className={`text-[13px] font-bold ${isCurrent ? "text-primary" : "text-foreground"}`}>
+                <span className={`text-sm font-semibold tabular-nums ${isCurrent ? "text-accent" : "text-foreground"}`}>
                   {i + 1}
                 </span>
-                
-                <div className="flex items-center justify-center gap-0.5 h-1.5">
+
+                <div className="flex items-center justify-center gap-0.5 h-0.5">
                   {isAnswered && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-success" />
+                    <span className="w-1 h-1 rounded-full bg-success" />
                   )}
                   {isSkipped && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-warning" />
+                    <span className="w-1 h-1 rounded-full bg-warning" />
                   )}
                   {isBookmarked && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                  )}
-                  {!isAnswered && !isSkipped && !isBookmarked && (
-                    <span className="w-1 h-1 rounded-full bg-border/40" />
+                    <span className="w-1 h-1 rounded-full bg-accent" />
                   )}
                 </div>
               </button>
@@ -105,16 +108,14 @@ export function QuestionNavigator({
           })}
         </div>
 
-
-
-
+        {/* Submit button */}
         <div className="mt-6">
           <button
             onClick={() => {
               markExamNavigationIntent();
               router.push(`/exam/${examId}/review`);
             }}
-            className="w-full py-3 rounded text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary-hover transition-colors duration-150"
+            className="btn-primary w-full h-10 text-sm font-medium"
           >
             Review &amp; Submit
           </button>
@@ -124,22 +125,10 @@ export function QuestionNavigator({
       {!showNav && (
         <button
           onClick={() => setShowNav(true)}
-          className="fixed right-4 bottom-4 w-10 h-10 rounded bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary-hover transition-colors duration-150 z-50"
+          className="fixed right-4 bottom-4 w-9 h-9 rounded-lg bg-foreground text-background flex items-center justify-center hover:bg-foreground/90 transition-colors z-50 shadow-md"
           title="Show question navigator"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6h16M4 12h16M4 18h16"
-            />
-          </svg>
+          <Grid3X3 className="w-4 h-4" />
         </button>
       )}
     </>

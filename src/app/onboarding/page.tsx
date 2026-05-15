@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isValidStudentId, STUDENT_ID_ERROR, STUDENT_ID_EXAMPLE, normalizeStudentId, STUDENT_ID_PREFIX } from "@/lib/student-id";
+import { Loader2 } from "lucide-react";
 
 export default function Onboarding() {
   const [collegeId, setCollegeId] = useState("");
@@ -41,7 +42,7 @@ export default function Onboarding() {
     setError("");
 
     const supabase = createClient();
-    
+
     const { data: { user } } = await supabase.auth.getUser();
     const targetUserId = user?.id;
 
@@ -81,35 +82,48 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <FloatingThemeToggle />
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-1">
-            Welcome, {userName}!
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Enter your Student College ID to complete registration
-          </p>
+      <div className="w-full max-w-[800px] animate-fade-in border border-border rounded-xl bg-background shadow-sm overflow-hidden flex flex-col md:flex-row">
+        
+        {/* Left Side: Branding / Framing */}
+        <div className="md:w-5/12 bg-muted/20 p-8 md:p-12 border-b md:border-b-0 md:border-r border-border flex flex-col justify-between">
+          <div>
+            <div className="w-10 h-10 rounded-lg bg-foreground flex items-center justify-center mb-6">
+              <span className="text-background font-bold text-sm">N</span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+              Welcome aboard,
+              <br />
+              <span className="text-muted-foreground">{userName}</span>
+            </h1>
+            <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+              To proceed to the assessment platform, please link your official student credentials.
+            </p>
+          </div>
+          <div className="hidden md:block">
+            <div className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">Secure System</div>
+          </div>
         </div>
 
-        <div className="card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Right Side: Form */}
+        <div className="md:w-7/12 p-8 md:p-12 flex flex-col justify-center">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-sm">
             {error && (
-              <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-sm animate-fade-in">
-                {error}
+              <div className="p-3 rounded-md bg-danger-muted border border-danger/20 text-danger text-xs font-medium flex items-center gap-2 animate-fade-in">
+                <span>{error}</span>
               </div>
             )}
 
-            <div>
+            <div className="space-y-2">
               <label
                 htmlFor="college-id"
-                className="block text-sm font-medium text-muted-foreground mb-2"
+                className="block text-sm font-medium text-foreground"
               >
                 Student College ID
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/60 font-mono text-lg select-none">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm select-none pointer-events-none">
                   {STUDENT_ID_PREFIX}
                 </span>
                 <input
@@ -118,34 +132,35 @@ export default function Onboarding() {
                   value={collegeId}
                   onChange={(e) => setCollegeId(e.target.value.toUpperCase())}
                   placeholder={STUDENT_ID_EXAMPLE}
-                  className="w-full pl-24 pr-4 py-3 rounded bg-background border border-border text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-primary transition-colors duration-150 font-mono text-lg"
+                  className="w-full h-11 bg-background border border-border rounded-md text-foreground font-mono text-base outline-none transition-colors focus:border-foreground hover:border-border-hover placeholder:text-muted-foreground/40 shadow-sm"
+                  style={{ paddingLeft: "4rem", paddingRight: "1rem" }}
                   required
                   autoFocus
                   maxLength={5}
                 />
               </div>
-              <p className="mt-3 text-xs text-muted-foreground">
-                This ID uniquely identifies you. The prefix <strong>{STUDENT_ID_PREFIX}</strong> is already added.
+              <p className="text-[11px] text-muted-foreground">
+                The prefix <strong>{STUDENT_ID_PREFIX}</strong> is added automatically.
               </p>
             </div>
 
             <button
               type="submit"
               disabled={loading || collegeId.trim().length < 1}
-              className="btn-primary w-full py-3 text-base shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent"
+              className="w-full h-10 flex items-center justify-center gap-2 bg-foreground text-background text-sm font-medium rounded-md hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mt-4"
             >
               {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="spinner" />
-                  Saving...
-                </span>
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Verifying...
+                </>
               ) : (
                 "Complete Registration"
               )}
             </button>
-
           </form>
         </div>
+
       </div>
     </div>
   );

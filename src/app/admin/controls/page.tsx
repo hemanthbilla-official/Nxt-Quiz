@@ -134,15 +134,9 @@ function Toggle({
       aria-checked={checked}
       disabled={disabled}
       onClick={onChange}
-      className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-all disabled:bg-muted disabled:text-muted-foreground ${
-        checked ? "border-success bg-success" : "border-border bg-card-hover"
-      }`}
+      className="toggle-switch"
     >
-      <span
-        className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
+      <span className="toggle-thumb" />
     </button>
   );
 }
@@ -243,35 +237,34 @@ export default function AdminControlsPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground">
-          Exam Controls
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Enable or disable student-facing exam behavior globally. Changes
-          apply the next time students load or refresh an exam page.
+    <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="pb-6 border-b border-border">
+        <h1 className="text-2xl font-bold tracking-tight">Exam Controls</h1>
+        <p className="mt-1 text-sm text-muted-foreground max-w-2xl">
+          Configure student-facing exam behavior globally. Changes apply on next exam load.
         </p>
       </div>
 
       {setupError && (
-        <div className="mb-6 rounded border border-warning/20 bg-warning/10 p-4 text-sm font-semibold text-warning">
+        <div className="rounded-lg border border-warning/20 bg-warning-muted p-4 text-sm font-medium text-warning">
           {setupError}
         </div>
       )}
 
       {message && (
-        <div className="mb-6 rounded border border-border bg-card p-4 text-sm font-semibold text-foreground">
+        <div className="rounded-lg border border-border bg-card p-4 text-sm font-medium text-foreground">
           {message}
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      {/* Action bar */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={saveControls}
           disabled={saving || loading}
-          className="rounded bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground"
+          className="btn-primary h-9"
         >
           {saving ? "Saving..." : "Save Controls"}
         </button>
@@ -279,7 +272,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(true)}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:bg-muted disabled:text-muted-foreground"
+          className="btn-secondary h-9"
         >
           Enable All
         </button>
@@ -287,7 +280,7 @@ export default function AdminControlsPage() {
           type="button"
           onClick={() => setAll(false)}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground transition-all hover:bg-card-hover disabled:bg-muted disabled:text-muted-foreground"
+          className="btn-secondary h-9"
         >
           Disable All
         </button>
@@ -295,12 +288,13 @@ export default function AdminControlsPage() {
           type="button"
           onClick={resetDefaults}
           disabled={saving || loading}
-          className="rounded border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-card-hover hover:text-foreground disabled:bg-muted disabled:text-muted-foreground"
+          className="btn-ghost h-9"
         >
           Reset Defaults
         </button>
-        <div className="flex items-center gap-3 ml-auto text-xs text-muted-foreground">
-          <span className="font-bold text-primary text-sm">{enabledCount}/{Object.keys(controls).length}</span>
+
+        <div className="flex items-center gap-2 ml-auto text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground">{enabledCount}/{Object.keys(controls).length}</span>
           <span>enabled</span>
           {savedAt && (
             <>
@@ -311,14 +305,15 @@ export default function AdminControlsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+      {/* Control Groups */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {controlGroups.map((group) => (
           <section key={group.title} className="card overflow-hidden">
-            <div className="border-b border-border bg-card-hover px-5 py-4">
-              <h2 className="text-lg font-bold text-foreground">
+            <div className="border-b border-border bg-muted/30 px-5 py-4">
+              <h2 className="text-[15px] font-semibold text-foreground">
                 {group.title}
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 {group.description}
               </p>
             </div>
@@ -329,10 +324,10 @@ export default function AdminControlsPage() {
                   className="flex items-start justify-between gap-4 px-5 py-4"
                 >
                   <div className="min-w-0">
-                    <p className="font-semibold text-foreground">
+                    <p className="text-sm font-medium text-foreground">
                       {item.label}
                     </p>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
                       {item.description}
                     </p>
                   </div>

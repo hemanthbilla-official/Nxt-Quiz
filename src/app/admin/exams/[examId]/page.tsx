@@ -8,6 +8,8 @@ import QuestionUpload from "./QuestionUpload";
 import ParticipantsTable from "./ParticipantsTable";
 import ExamSidebar from "./ExamSidebar";
 import EditExamModal from "./EditExamModal";
+import ConfirmationModal from "@/components/ui/ConfirmationModal";
+import { toast } from "react-toastify";
 
 export default function ExamControl({
   params,
@@ -34,6 +36,19 @@ export default function ExamControl({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    type: "info" | "warning" | "danger";
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+    type: "info",
+  });
   const router = useRouter();
 
   const fetchData = async () => {
@@ -135,14 +150,14 @@ export default function ExamControl({
       });
 
       if (res.ok) {
-        alert("Questions uploaded and linked successfully!");
+        toast.success("Questions uploaded successfully!");
         fetchData();
       } else {
         const d = await res.json();
-        alert("Upload failed: " + (d.error || "Unknown error"));
+        toast.error("Upload failed: " + (d.error || "Unknown error"));
       }
     } catch {
-      alert("Invalid JSON file format.");
+      toast.error("Invalid JSON file format.");
     } finally {
       setIsImporting(false);
       e.target.value = "";
@@ -159,46 +174,66 @@ export default function ExamControl({
   }, [examId, isEditModalOpen]);
 
   const handleStart = async () => {
-    if (
-      !confirm(
-        "Start the exam for all waiting students? This cannot be undone.",
-      )
-    )
-      return;
-    setStarting(true);
-    const res = await fetch(`/api/exam/${examId}/start`, { method: "POST" });
-    if (res.ok) fetchData();
-    setStarting(false);
+    setConfirmModal({
+      isOpen: true,
+      title: "Start Assessment",
+      message: "Start the exam for all waiting students? This cannot be undone.",
+      type: "warning",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setStarting(true);
+        const res = await fetch(`/api/exam/${examId}/start`, { method: "POST" });
+        if (res.ok) {
+          toast.success("Exam started!");
+          fetchData();
+        } else {
+          toast.error("Failed to start exam");
+        }
+        setStarting(false);
+      },
+    });
   };
 
   const handleEnd = async () => {
-    if (
-      !confirm(
-        "End the exam now? All active attempts will be auto-submitted with their current answers. This cannot be undone.",
-      )
-    )
-      return;
-    setEnding(true);
-    const res = await fetch(`/api/exam/${examId}/end`, { method: "POST" });
-    if (res.ok) fetchData();
-    setEnding(false);
+    setConfirmModal({
+      isOpen: true,
+      title: "Terminate Session",
+      message: "End the exam now? All active attempts will be auto-submitted. This cannot be undone.",
+      type: "danger",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setEnding(true);
+        const res = await fetch(`/api/exam/${examId}/end`, { method: "POST" });
+        if (res.ok) {
+          toast.info("Exam terminated");
+          fetchData();
+        } else {
+          toast.error("Failed to end exam");
+        }
+        setEnding(false);
+      },
+    });
   };
 
   const handleDeleteExam = async () => {
-    if (
-      !confirm(
-        "PERMANENTLY DELETE this exam and all student attempts? This cannot be undone.",
-      )
-    )
-      return;
-    setDeleting(true);
-    const res = await fetch(`/api/admin/exams/${examId}`, { method: "DELETE" });
-    if (res.ok) {
-      router.push("/admin");
-    } else {
-      setDeleting(false);
-      alert("Failed to delete exam");
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Exam",
+      message: "PERMANENTLY DELETE this exam and all student attempts? This cannot be undone.",
+      type: "danger",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setDeleting(true);
+        const res = await fetch(`/api/admin/exams/${examId}`, { method: "DELETE" });
+        if (res.ok) {
+          toast.success("Exam deleted");
+          router.push("/admin");
+        } else {
+          setDeleting(false);
+          toast.error("Failed to delete exam");
+        }
+      },
+    });
   };
 
   const handleUpdateExam = async (e: React.FormEvent) => {
@@ -211,41 +246,63 @@ export default function ExamControl({
     });
     if (res.ok) {
       await fetchData();
+      toast.success("Settings updated");
       setIsSaving(false);
       setIsEditModalOpen(false);
     } else {
       setIsSaving(false);
-      alert("Failed to update exam");
+      toast.error("Failed to update exam");
     }
   };
 
   const handleKick = async (userId: string, name: string) => {
-    if (!confirm(`Kick student "${name}" from the exam?`)) return;
-    setActionLoading(userId);
-    const res = await fetch(`/api/admin/exams/${examId}/kick`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
+    setConfirmModal({
+      isOpen: true,
+      title: "Kick Student",
+      message: `Are you sure you want to kick "${name}" from the exam?`,
+      type: "danger",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setActionLoading(userId);
+        const res = await fetch(`/api/admin/exams/${examId}/kick`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        if (res.ok) {
+          toast.info(`${name} has been kicked`);
+          fetchData();
+        } else {
+          toast.error("Failed to kick student");
+        }
+        setActionLoading(null);
+      },
     });
-    if (res.ok) fetchData();
-    setActionLoading(null);
   };
 
   const handleReset = async (userId: string, name: string) => {
-    if (
-      !confirm(
-        `Reset all answers and attempts for "${name}"? They will be able to start over.`,
-      )
-    )
-      return;
-    setActionLoading(userId);
-    const res = await fetch(`/api/admin/exams/${examId}/reset`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
+    setConfirmModal({
+      isOpen: true,
+      title: "Reset Attempt",
+      message: `Reset all answers and attempts for "${name}"? They will be able to start over.`,
+      type: "warning",
+      onConfirm: async () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        setActionLoading(userId);
+        const res = await fetch(`/api/admin/exams/${examId}/reset`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+        if (res.ok) {
+          toast.success(`Attempt reset for ${name}`);
+          fetchData();
+        } else {
+          toast.error("Failed to reset attempt");
+        }
+        setActionLoading(null);
+      },
     });
-    if (res.ok) fetchData();
-    setActionLoading(null);
   };
 
   // --- Loading & Error States ---
@@ -390,6 +447,15 @@ export default function ExamControl({
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </div>
   );
 }
