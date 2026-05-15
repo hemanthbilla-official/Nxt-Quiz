@@ -106,7 +106,7 @@ export default function ParticipantsTable({
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
                     {actionLoading === p.user_id ? (
                       <div className="spinner h-4 w-4" />
                     ) : (

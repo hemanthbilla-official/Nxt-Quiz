@@ -260,7 +260,7 @@ export default function StudentsPage() {
                 >
                   <div className="flex items-center gap-1">
                     Name
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="opacity-30 group-hover:opacity-100 transition-opacity">
                       {sortConfig?.key === "full_name" ? (sortConfig.direction === "asc" ? "↑" : "↓") : "↕"}
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export default function StudentsPage() {
                 >
                   <div className="flex items-center gap-1">
                     College ID
-                    <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="opacity-30 group-hover:opacity-100 transition-opacity">
                       {sortConfig?.key === "student_college_id" ? (sortConfig.direction === "asc" ? "↑" : "↓") : "↕"}
                     </span>
                   </div>
