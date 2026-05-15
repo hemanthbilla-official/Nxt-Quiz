@@ -68,7 +68,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-3 rounded bg-primary text-primary-foreground font-semibold transition-colors duration-150 hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+              className="w-full py-3 rounded border border-transparent bg-primary text-primary-foreground font-semibold transition-all duration-150 hover:bg-primary-hover disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

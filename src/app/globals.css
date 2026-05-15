@@ -234,9 +234,7 @@ button:disabled {
   tab-size: 2;
 }
 
-.text-primary-foreground {
-  color: var(--primary-foreground) !important;
-}
+
 
 /* ── Fade-in (150ms, opacity only) ── */
 @keyframes fade-in {
