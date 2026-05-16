@@ -249,6 +249,7 @@ export default function Submitted({
   const [rank, setRank] = useState<number | null>(null);
   const [totalParticipants, setTotalParticipants] = useState<number>(0);
   const [examTitle, setExamTitle] = useState("");
+  const [attemptId, setAttemptId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(true);
   const [isPublished, setIsPublished] = useState(false);
@@ -302,6 +303,7 @@ export default function Submitted({
       }
 
       if (attempt) {
+        setAttemptId(attempt.id);
         setScore(attempt.total_score);
         setMaxScore(attempt.max_score);
         setRank(attempt.rank);
@@ -326,24 +328,48 @@ export default function Submitted({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
+    
+    const pollFn = async () => {
+      await loadData();
+    };
+    
+    // Poll every 5 seconds for local mode / missed realtime events
+    // Also handles rank/score changes after other submissions are scored
+    const pollInterval = setInterval(pollFn, 5000);
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [loadData]);
 
   useEffect(() => {
+    if (!attemptId) return;
     const supabase = createClient();
+    
     const channel = supabase
-      .channel(`exam-submitted-realtime-${examId}`)
+      .channel(`exam-submitted-realtime-${examId}-${attemptId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "exams", filter: `id=eq.${examId}` },
-        (payload) => {
-          if (payload.new.status === "closed") {
-            loadData();
-          }
+        () => {
+          router.refresh();
+          loadData();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "attempts", filter: `id=eq.${attemptId}` },
+        () => {
+          router.refresh();
+          loadData();
         },
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [examId, loadData]);
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [examId, attemptId, loadData, router]);
 
   if (loading) {
     return (

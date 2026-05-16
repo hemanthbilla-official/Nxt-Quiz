@@ -45,8 +45,7 @@ type ProgrammingQuestionProps = {
 
 type NewFileKind = "jsx" | "css";
 
-const maxConsoleEntries = 100;
-const defaultEditorFontSize = 13;
+const defaultEditorFontSize = 15;
 const minEditorFontSize = 11;
 const maxEditorFontSize = 20;
 const protectedComponentFiles = new Set(["App.jsx"]);
@@ -101,8 +100,6 @@ export default function ProgrammingQuestion({
   const [activeFileName, setActiveFileName] = useState(
     files[0]?.name || "App.jsx",
   );
-  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
-  const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const [runResults, setRunResults] = useState<RunCodeResponse | null>(null);
   const [isRunningTests, setIsRunningTests] = useState(false);
   const [runCooldown, setRunCooldown] = useState(0);
@@ -115,6 +112,7 @@ export default function ProgrammingQuestion({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [history, setHistory] = useState<EditorFile[][]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isTestPanelOpen, setIsTestPanelOpen] = useState(false);
 
   // Refs
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -130,13 +128,10 @@ export default function ProgrammingQuestion({
   );
 
   useEffect(() => {
-    if (!controls.codeConsoleEnabled) {
-      setIsConsoleOpen(false);
-    }
     if (!controls.codeFileActionsEnabled) {
       setFileModalKind(null);
     }
-  }, [controls.codeConsoleEnabled, controls.codeFileActionsEnabled]);
+  }, [controls.codeFileActionsEnabled]);
 
   // --- Reset state when question changes ---
   // NOTE: savedCode is read via ref so that formatting/saving (which updates
@@ -150,7 +145,6 @@ export default function ProgrammingQuestion({
     setFiles(initialFiles);
     filesRef.current = initialFiles;
     setActiveFileName(initialFiles[0]?.name || "App.jsx");
-    setConsoleEntries([]);
     setRunResults(null);
     setIsRunningTests(false);
     setRunCooldown(0);
@@ -428,16 +422,7 @@ export default function ProgrammingQuestion({
       filesRef.current = nextFiles;
       emitCodeChange(nextFiles, true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setConsoleEntries((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          level: "error" as const,
-          message: `Format error: ${message}`,
-          timestamp: new Date().toLocaleTimeString(),
-        },
-      ].slice(-maxConsoleEntries));
+      // Format error handled silently or via alternative UI in future
     }
   }, [activeFile, controls.codeFormatEnabled, emitCodeChange]);
 
@@ -498,7 +483,8 @@ export default function ProgrammingQuestion({
   }, [runResults]);
 
   const workspaceStyle = {
-    "--pe-editor-width": `${editorPercent}%`,
+    "--pe-editor-width": "100%",
+    gridTemplateColumns: "1fr",
   } as CSSProperties;
   const editorPaneStyle = {
     "--pe-code-font-size": `${editorFontSize}px`,
@@ -592,16 +578,7 @@ export default function ProgrammingQuestion({
               </button>
             </div>
           )}
-          {controls.codeConsoleEnabled && (
-            <button
-              className="pe-btn pe-btnSmall"
-              type="button"
-              onClick={() => setIsConsoleOpen((v) => !v)}
-              title={isConsoleOpen ? "Close console" : "Open console"}
-            >
-              Console
-            </button>
-          )}
+
           <button
             className="pe-btn pe-btnSmall"
             type="button"
@@ -687,60 +664,18 @@ export default function ProgrammingQuestion({
               onChange={handleCodeChange}
             />
           </div>
-        </div>
 
-        {/* Resize handle */}
-        <div
-          className="pe-resizeHandle"
-          onPointerDown={startResize}
-          role="separator"
-          aria-label="Resize editor"
-          tabIndex={0}
-        >
-          ⋮
-        </div>
-
-        {/* Right panel: tests + console */}
-        <div className="pe-rightPanel">
-          {/* Test case panel */}
-          <TestCasePanel
-            challengeMode={challengeMode}
-            testCases={testCases}
-            runResults={runResults}
-            isRunning={isRunningTests}
-          />
-
-          {/* Console panel */}
-          {controls.codeConsoleEnabled && isConsoleOpen && (
-            <div className="pe-consoleSection">
-              <div className="pe-sectionHeader">
-                <span className="pe-sectionTitle">Console</span>
-                <button
-                  className="pe-btnSmall"
-                  type="button"
-                  onClick={() => setConsoleEntries([])}
-                >
-                  Clear
-                </button>
-              </div>
-              <div className="pe-consolePane">
-                {consoleEntries.length === 0 ? (
-                  <div className="pe-consoleEmpty">No console output</div>
-                ) : (
-                  consoleEntries.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className={`pe-consoleLine pe-console-${entry.level}`}
-                    >
-                      <span className="pe-consoleTime">{entry.timestamp}</span>
-                      <span className="pe-consoleLevel">{entry.level}</span>
-                      <pre>{entry.message}</pre>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
+          {/* Test case panel relocated to bottom dock */}
+          <div className="pe-editorBottomDock">
+            <TestCasePanel
+              challengeMode={challengeMode}
+              testCases={testCases}
+              runResults={runResults}
+              isRunning={isRunningTests}
+              isCollapsed={!isTestPanelOpen}
+              onToggle={() => setIsTestPanelOpen(!isTestPanelOpen)}
+            />
+          </div>
         </div>
       </div>
 

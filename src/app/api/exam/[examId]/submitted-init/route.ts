@@ -24,7 +24,7 @@ export async function GET(
 
   const { data: attempt } = await admin
     .from("attempts")
-    .select("submitted_at, server_started_at, status, total_score, max_score")
+    .select("id, submitted_at, server_started_at, status, total_score, max_score")
     .eq("exam_id", examId)
     .eq("user_id", userId)
     .single();

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveUserIdForLocalBypass } from "@/lib/local-user";
-import { isCodeSizeAllowed } from "@/lib/exam-scoring";
+import { isCodeSizeAllowed, SUBMISSION_GRACE_MS } from "@/lib/exam-scoring";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
 export async function PUT(
@@ -48,11 +48,16 @@ export async function PUT(
   const admin = createAdminClient();
   const { data: exam } = await admin
     .from("exams")
-    .select("status")
+    .select("status, closes_at")
     .eq("id", examId)
     .single();
 
-  if (exam?.status !== "in_progress") {
+  // Allow writes for in_progress exams or closed exams within grace window
+  const isInProgress = exam?.status === "in_progress";
+  const isClosedWithinGrace = exam?.status === "closed" && exam?.closes_at && 
+    (Date.now() < new Date(exam.closes_at).getTime() + SUBMISSION_GRACE_MS);
+
+  if (!isInProgress && !isClosedWithinGrace) {
     return NextResponse.json({ error: "Exam is not active" }, { status: 400 });
   }
 
@@ -68,7 +73,8 @@ export async function PUT(
     return NextResponse.json({ error: "Active attempt not found" }, { status: 404 });
   }
 
-  if (Date.now() > new Date(attempt.server_due_at).getTime()) {
+  // Only enforce time window when exam is still in_progress
+  if (isInProgress && Date.now() > new Date(attempt.server_due_at).getTime()) {
     return NextResponse.json({ error: "Exam time has expired" }, { status: 403 });
   }
 

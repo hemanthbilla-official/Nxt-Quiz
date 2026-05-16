@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { ExamData, Participant } from "./types";
 import ExamHeader from "./ExamHeader";
@@ -10,6 +10,7 @@ import ExamSidebar from "./ExamSidebar";
 import EditExamModal from "./EditExamModal";
 import ConfirmationModal from "@/components/ui/ConfirmationModal";
 import { toast } from "react-toastify";
+import { createClient } from "@/lib/supabase/browser";
 
 export default function ExamControl({
   params,
@@ -51,7 +52,8 @@ export default function ExamControl({
   });
   const router = useRouter();
 
-  const fetchData = async () => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch(`/api/admin/exams/${examId}`);
       if (res.status === 403) {
@@ -100,7 +102,8 @@ export default function ExamControl({
     } finally {
       setLoading(false);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examId, isEditModalOpen]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0 || exam?.status !== "in_progress")
@@ -170,19 +173,49 @@ export default function ExamControl({
       const interval = setInterval(fetchData, 5000);
       return () => clearInterval(interval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [examId, isEditModalOpen]);
+  }, [fetchData, isEditModalOpen]);
+
+  // Realtime subscriptions for instant score/participant updates
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel(`admin-exam-realtime-${examId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attempts", filter: `exam_id=eq.${examId}` },
+        () => { fetchData(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "exam_participants", filter: `exam_id=eq.${examId}` },
+        () => { fetchData(); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "exams", filter: `id=eq.${examId}` },
+        () => { fetchData(); },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [examId, fetchData]);
 
   const handleStart = async () => {
     setConfirmModal({
       isOpen: true,
       title: "Start Assessment",
-      message: "Start the exam for all waiting students? This cannot be undone.",
+      message:
+        "Start the exam for all waiting students? This cannot be undone.",
       type: "warning",
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         setStarting(true);
-        const res = await fetch(`/api/exam/${examId}/start`, { method: "POST" });
+        const res = await fetch(`/api/exam/${examId}/start`, {
+          method: "POST",
+        });
         if (res.ok) {
           toast.success("Exam started!");
           fetchData();
@@ -198,7 +231,8 @@ export default function ExamControl({
     setConfirmModal({
       isOpen: true,
       title: "Terminate Session",
-      message: "End the exam now? All active attempts will be auto-submitted. This cannot be undone.",
+      message:
+        "End the exam now? All active attempts will be auto-submitted. This cannot be undone.",
       type: "danger",
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -219,12 +253,15 @@ export default function ExamControl({
     setConfirmModal({
       isOpen: true,
       title: "Delete Exam",
-      message: "PERMANENTLY DELETE this exam and all student attempts? This cannot be undone.",
+      message:
+        "PERMANENTLY DELETE this exam and all student attempts? This cannot be undone.",
       type: "danger",
       onConfirm: async () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
         setDeleting(true);
-        const res = await fetch(`/api/admin/exams/${examId}`, { method: "DELETE" });
+        const res = await fetch(`/api/admin/exams/${examId}`, {
+          method: "DELETE",
+        });
         if (res.ok) {
           toast.success("Exam deleted");
           router.push("/admin");

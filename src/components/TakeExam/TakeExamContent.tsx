@@ -46,6 +46,11 @@ export function TakeExamContent({ examId }: { examId: string }) {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const router = useRouter();
 
+  // Idempotent guard for auto-submit
+  const submittingRef = useRef(false);
+  // Reconciliation polling ref
+  const reconciliationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Smart Navigation: Jump to specific question when query param 'q' changes
   useEffect(() => {
     if (startQuestionId && questions.length > 0) {
@@ -131,6 +136,11 @@ export function TakeExamContent({ examId }: { examId: string }) {
           filter: `id=eq.${attemptId}`,
         },
         (payload) => {
+          if (payload.new.status === "submitted") {
+            toast.info("Exam has been ended by admin. Your answers were submitted automatically.");
+            handleAutoSubmit(1000);
+            return;
+          }
           const newDueAt = payload.new.server_due_at;
           if (newDueAt) {
             const dueAtMs = new Date(newDueAt).getTime();
@@ -191,7 +201,47 @@ export function TakeExamContent({ examId }: { examId: string }) {
       supabase.removeChannel(attemptChannel);
       supabase.removeChannel(examChannel);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attemptId, examId, serverDrift]);
+
+  // Reconciliation polling loop for local mode / missed realtime events
+  useEffect(() => {
+    if (!attemptId || loading) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/exam/${examId}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // React to exam closed status
+        if (data.status === "closed" || data.status === "ended") {
+          toast.info("Exam has been ended by admin. Your answers were submitted automatically.");
+          handleAutoSubmit(1500);
+          return;
+        }
+
+        // React to attempt submitted status (e.g., kicked)
+        if (data.attempt?.status === "submitted") {
+          markExamNavigationIntent();
+          router.push(`/exam/${examId}/submitted`);
+        }
+      } catch {
+        // ignore - polling fallback, only triggers on realtime miss
+      }
+    };
+
+    // Poll every 3 seconds while active
+    reconciliationIntervalRef.current = setInterval(checkStatus, 3000);
+
+    return () => {
+      if (reconciliationIntervalRef.current) {
+        clearInterval(reconciliationIntervalRef.current);
+        reconciliationIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, examId, loading]);
 
   // Full screen management
   const enterFullScreen = useCallback(() => {
@@ -306,9 +356,20 @@ export function TakeExamContent({ examId }: { examId: string }) {
   }, [examId, router]);
 
   const handleAutoSubmit = useCallback(async (delayMs: number = 0) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+
     if (delayMs > 0) {
       await new Promise(resolve => setTimeout(resolve, delayMs));
     }
+
+    // Clear pending debounced saves - they will be lost but that's acceptable
+    // The important thing is to not block submission with more saves
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
     const id = attemptIdRef.current;
     if (!id) return;
     try {
@@ -455,6 +516,18 @@ export function TakeExamContent({ examId }: { examId: string }) {
     [attemptId, answers, examId],
   );
 
+  // Auto-collapse sidebar for programming questions
+  useEffect(() => {
+    if (!loading && questions[currentIndex]) {
+      const isCoding = questions[currentIndex].questionType === "programming";
+      if (isCoding) {
+        setShowNav(false);
+      } else {
+        setShowNav(true);
+      }
+    }
+  }, [currentIndex, questions, loading]);
+
   if (loading) {
     return (
       <div className="screen-loader">
@@ -575,9 +648,9 @@ export function TakeExamContent({ examId }: { examId: string }) {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full">
+      <div className="flex-1 flex flex-col lg:flex-row max-w-7xl mx-auto w-full overflow-hidden">
         {/* Main content */}
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto transition-all duration-300">
           <QuestionDisplay
             currentQuestion={currentQuestion}
             currentAnswer={currentAnswer}
@@ -592,19 +665,26 @@ export function TakeExamContent({ examId }: { examId: string }) {
             setCurrentIndex={setCurrentIndex}
             saveCodeAnswer={saveCodeAnswer}
             controls={controls}
+            isNavCollapsed={!showNav}
           />
         </main>
 
         {controls.questionNavigatorEnabled && (
-          <QuestionNavigator
-            questions={questions}
-            answers={answers}
-            currentIndex={currentIndex}
-            setCurrentIndex={setCurrentIndex}
-            showNav={showNav}
-            setShowNav={setShowNav}
-            examId={examId}
-          />
+          <div 
+            className={`transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0 ${
+              showNav ? "w-full lg:w-72" : "w-0"
+            }`}
+          >
+            <QuestionNavigator
+              questions={questions}
+              answers={answers}
+              currentIndex={currentIndex}
+              setCurrentIndex={setCurrentIndex}
+              showNav={showNav}
+              setShowNav={setShowNav}
+              examId={examId}
+            />
+          </div>
         )}
       </div>
 

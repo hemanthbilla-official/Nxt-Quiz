@@ -7,7 +7,7 @@ import {
 } from "@/lib/exam-navigation";
 import { DEFAULT_EXAM_CONTROLS, type ExamControls } from "@/lib/exam-controls";
 import { createClient } from "@/lib/supabase/browser";
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
@@ -49,7 +49,13 @@ export default function ReviewExam({
   const [serverDrift, setServerDrift] = useState(0); // diff between server and local clock
   const [loading, setLoading] = useState(true);
   const [controls, setControls] = useState<ExamControls>(DEFAULT_EXAM_CONTROLS);
+  const [filter, setFilter] = useState<"all" | "answered" | "skipped" | "bookmarked" | "unanswered">("all");
   const router = useRouter();
+
+  // Idempotent guard for submit
+  const submittingRef = useRef(false);
+  // Reconciliation polling ref
+  const reconciliationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Proctoring: Detect Tab Switch
   useEffect(() => {
@@ -126,6 +132,11 @@ export default function ReviewExam({
           filter: `id=eq.${attemptId}`,
         },
         (payload) => {
+          if (payload.new.status === "submitted") {
+            toast.info("Exam has been ended by admin. Submitting your work.");
+            handleSubmit();
+            return;
+          }
           const newDueAt = payload.new.server_due_at;
           if (newDueAt) {
             const dueAtMs = new Date(newDueAt).getTime();
@@ -138,6 +149,16 @@ export default function ReviewExam({
             );
           }
         },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "exams", filter: `id=eq.${examId}` },
+        (payload) => {
+          if (payload.new.status === "closed") {
+            toast.info("Exam has been ended by admin. Submitting your work.");
+            handleSubmit();
+          }
+        }
       )
       .on(
         "postgres_changes",
@@ -157,7 +178,47 @@ export default function ReviewExam({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [attemptId, serverDrift]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, serverDrift, examId]);
+
+  // Reconciliation polling loop for local mode / missed realtime events
+  useEffect(() => {
+    if (!attemptId || loading) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/exam/${examId}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // React to exam closed status
+        if (data.status === "closed" || data.status === "ended") {
+          toast.info("Exam has been ended by admin. Submitting your work.");
+          handleSubmit();
+          return;
+        }
+
+        // React to attempt submitted status (e.g., kicked)
+        if (data.attempt?.status === "submitted") {
+          markExamNavigationIntent();
+          router.push(`/exam/${examId}/submitted`);
+        }
+      } catch {
+        // ignore - polling fallback
+      }
+    };
+
+    // Poll every 3 seconds while active
+    reconciliationIntervalRef.current = setInterval(checkStatus, 3000);
+
+    return () => {
+      if (reconciliationIntervalRef.current) {
+        clearInterval(reconciliationIntervalRef.current);
+        reconciliationIntervalRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptId, examId, loading]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -244,7 +305,8 @@ export default function ReviewExam({
   };
 
   const handleSubmit = async () => {
-    if (!attemptId || submitting) return;
+    if (!attemptId || submitting || submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
 
     try {
@@ -257,6 +319,7 @@ export default function ReviewExam({
       router.push(`/exam/${examId}/submitted`);
     } catch {
       setSubmitting(false);
+      submittingRef.current = false;
     }
   };
 
@@ -364,327 +427,277 @@ export default function ReviewExam({
   );
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 bg-card/90 border-b border-border px-4 sm:px-5 py-3">
-        <div className="max-w-4xl mx-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-base font-semibold text-foreground">
-            Review & Submit
-          </h1>
-          <div className="flex items-center gap-3">
-            {controls.themeToggleEnabled && <ThemeToggle />}
-            {timeLeft !== null && (
-              <div
-                className={`px-3 py-1.5 rounded font-mono font-bold text-base border ${
-                  isUrgent
-                    ? "bg-danger-muted text-danger border-danger/20"
-                    : "bg-background-secondary text-foreground border-border"
-                }`}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 glass border-b border-border shadow-sm">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <div className="flex flex-col min-w-0">
+            <h1 className="text-base font-semibold text-foreground truncate">
+              Review & Submit
+            </h1>
+            <p className="text-[11px] text-muted-foreground hidden sm:block">
+              Verify your answers before final submission
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="hidden xs:flex items-center gap-2">
+              {controls.themeToggleEnabled && <ThemeToggle />}
+              {timeLeft !== null && (
+                <div
+                  className={`flex items-center gap-2 px-3 py-1 rounded-md font-mono font-bold text-sm border transition-colors ${
+                    isUrgent
+                      ? "bg-danger/10 text-danger border-danger/20 animate-pulse"
+                      : "bg-muted text-foreground border-border"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {formatTime(timeLeft)}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBackToExam}
+                disabled={isNavigatingBack || submitting || isOpeningConfirm || navigatingToQuestion !== null}
+                className="btn-secondary h-9 px-3 sm:px-4 text-xs sm:text-sm"
               >
-                {formatTime(timeLeft)}
-              </div>
-            )}
+                {isNavigatingBack ? (
+                  <div className="spinner !w-3.5 !h-3.5" />
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span className="hidden xs:inline">Back to Exam</span>
+                    <span className="xs:hidden">Back</span>
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleOpenConfirm}
+                disabled={isOpeningConfirm || submitting || isNavigatingBack || navigatingToQuestion !== null}
+                className="btn-primary h-9 px-3 sm:px-4 text-xs sm:text-sm bg-accent hover:bg-accent-hover text-white border-none shadow-md"
+              >
+                {isOpeningConfirm ? (
+                  <div className="spinner !w-3.5 !h-3.5 !border-t-white" />
+                ) : (
+                  <>
+                    <span className="hidden xs:inline">Submit Exam</span>
+                    <span className="xs:hidden">Submit</span>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-5">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-success">{answered.length}</p>
-            <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
-              <IconCheck /> Answered
-            </p>
-          </div>
-          {controls.skipEnabled && (
-            <div className="card p-4 text-center">
-              <p className="text-2xl font-bold text-warning">
-                {skipped.length}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                <IconSkip /> Skipped
-              </p>
-            </div>
-          )}
-          {controls.bookmarksEnabled && (
-            <div className="card p-4 text-center">
-              <p className="text-2xl font-bold text-accent">
-                {bookmarked.length}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                <IconBookmark /> Bookmarked
-              </p>
-            </div>
-          )}
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-muted-foreground">{unanswered.length}</p>
-            <p className="text-[10px] text-muted-foreground mt-1 flex items-center justify-center gap-1">
-              <IconQuestion /> Unanswered
-            </p>
-          </div>
+      <main className="flex-1 max-w-[1200px] mx-auto w-full px-4 sm:px-6 py-8">
+        {/* Responsive Filters */}
+        <div className="flex flex-wrap gap-2 mb-8 p-1.5 bg-muted/30 rounded-2xl border border-border w-full">
+          {[
+            { id: "all", label: "All", count: questions.length, icon: null },
+            { id: "answered", label: "Answered", count: answered.length, icon: IconCheck },
+            ...(controls.skipEnabled ? [{ id: "skipped", label: "Skipped", count: skipped.length, icon: IconSkip }] : []),
+            ...(controls.bookmarksEnabled ? [{ id: "bookmarked", label: "Bookmarked", count: bookmarked.length, icon: IconBookmark }] : []),
+            { id: "unanswered", label: "Unanswered", count: unanswered.length, icon: IconQuestion },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFilter(item.id as any)}
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-200 ${
+                filter === item.id
+                  ? "bg-card text-foreground shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
+              }`}
+            >
+              {item.icon && (
+                <span className={`shrink-0 ${
+                  filter === item.id ? "text-accent" : "text-muted-foreground/60"
+                }`}>
+                  <item.icon />
+                </span>
+              )}
+              <span className="truncate">{item.label}</span>
+              <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[10px] ${
+                filter === item.id ? "bg-accent/10 text-accent" : "bg-muted text-muted-foreground/60"
+              }`}>
+                {item.count}
+              </span>
+            </button>
+          ))}
         </div>
 
-        {unanswered.length > 0 && (
-          <div className="p-4 rounded bg-warning/10 border border-warning/20 text-warning text-sm mb-6 animate-fade-in flex items-center gap-2">
-            <svg
-              className="w-5 h-5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-            You have {unanswered.length} unanswered question
-            {unanswered.length !== 1 ? "s" : ""}. You can go back and answer
-            them before submitting.
+        {unanswered.length > 0 && filter === "all" && (
+          <div className="mb-8 animate-fade-in">
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/5 border border-warning/20 text-warning">
+              <div className="mt-0.5">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold">Incomplete Assessment</p>
+                <p className="text-xs opacity-80 mt-1 leading-relaxed">
+                  You have {unanswered.length} unanswered question{unanswered.length !== 1 ? "s" : ""}. 
+                  We recommend reviewing these before final submission to maximize your score.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
-        {[
-          {
-            title: "Answered",
-            items: answered,
-            color: "success",
-            Icon: IconCheck,
-          },
-          ...(controls.skipEnabled
-            ? [
-                {
-                  title: "Skipped",
-                  items: skipped,
-                  color: "warning",
-                  Icon: IconSkip,
-                },
-              ]
-            : []),
-          ...(controls.bookmarksEnabled
-            ? [
-                {
-                  title: "Bookmarked",
-                  items: bookmarked,
-                  color: "secondary",
-                  Icon: IconBookmark,
-                },
-              ]
-            : []),
-          {
-            title: "Unanswered",
-            items: unanswered,
-            color: "muted",
-            Icon: IconQuestion,
-          },
-        ]
-          .filter(({ items }) => items.length > 0)
-          .map(({ title, items, color, Icon }) => (
-            <div key={title} className="mb-6">
-              <h3
-                className={`text-sm font-semibold text-${color} mb-3 flex items-center gap-2`}
-              >
-                <Icon /> {title} ({items.length})
-              </h3>
-              <div className="space-y-2">
-                {items.map((q) => (
-                  <button
-                    key={q.id}
-                    disabled={
-                      navigatingToQuestion !== null ||
-                      isNavigatingBack ||
-                      submitting ||
-                      isOpeningConfirm
-                    }
-                    onClick={() => handleGoToQuestion(q.id)}
-                    className="w-full text-left p-3 rounded bg-card border border-border hover:border-border-hover hover:bg-card-hover transition-all text-sm disabled:opacity-70 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="flex min-w-0 items-center">
-                      <span className="text-muted-foreground mr-2">
-                        Q{questions.indexOf(q) + 1}.
-                      </span>
-                      <span className="text-foreground break-words">
-                        {q.question.length > 80
-                          ? q.question.slice(0, 80) + "..."
-                          : q.question}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        [{q.topic}]
-                      </span>
-                    </div>
-                    {navigatingToQuestion === q.id && (
-                      <div
-                        className="spinner"
-                        style={{ width: 14, height: 14 }}
-                      />
-                    )}
-                  </button>
-                ))}
+        <div className="space-y-10 pb-20">
+          {[
+            { id: "answered", title: "Answered Questions", items: answered, color: "text-success", indicator: "bg-success", Icon: IconCheck },
+            ...(controls.skipEnabled ? [{ id: "skipped", title: "Skipped Questions", items: skipped, color: "text-warning", indicator: "bg-warning", Icon: IconSkip }] : []),
+            ...(controls.bookmarksEnabled ? [{ id: "bookmarked", title: "Bookmarked Items", items: bookmarked, color: "text-accent", indicator: "bg-accent", Icon: IconBookmark }] : []),
+            { id: "unanswered", title: "Unanswered Questions", items: unanswered, color: "text-muted-foreground", indicator: "bg-border", Icon: IconQuestion },
+          ]
+            .filter(({ id, items }) => items.length > 0 && (filter === "all" || filter === id))
+            .map(({ title, items, color, indicator, Icon }) => (
+              <section key={title} className="animate-slide-up">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className={`w-1.5 h-1.5 rounded-full ${indicator}`} />
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {title} <span className="ml-1 opacity-60 font-medium">({items.length})</span>
+                  </h3>
+                </div>
+                
+                <div className="grid gap-2">
+                  {items.map((q) => (
+                    <button
+                      key={q.id}
+                      disabled={navigatingToQuestion !== null || isNavigatingBack || submitting || isOpeningConfirm}
+                      onClick={() => handleGoToQuestion(q.id)}
+                      className="group w-full text-left p-4 rounded-xl bg-card border border-border hover:border-accent/30 hover:bg-accent/[0.02] hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-70 flex items-start justify-between gap-4"
+                    >
+                      <div className="flex items-start gap-4 flex-1 min-w-0">
+                        <span className="flex-shrink-0 w-8 h-8 mt-0.5 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground group-hover:bg-accent/10 group-hover:text-accent transition-colors">
+                          {questions.indexOf(q) + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-foreground font-medium whitespace-normal break-words leading-relaxed group-hover:text-accent transition-colors" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                            {q.question}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">
+                            {q.topic}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="shrink-0 flex items-center gap-3 mt-0.5">
+                        {navigatingToQuestion === q.id ? (
+                          <div className="spinner !w-3.5 !h-3.5" />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-accent/10 text-accent">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          
+          {(filter !== "all" && [
+            { id: "answered", items: answered },
+            { id: "skipped", items: skipped },
+            { id: "bookmarked", items: bookmarked },
+            { id: "unanswered", items: unanswered },
+          ].find(f => f.id === filter)?.items.length === 0) && (
+            <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-in">
+              <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4 text-muted-foreground/40">
+                <IconQuestion />
               </div>
-            </div>
-          ))}
-
-        <div className="mt-6 pt-5 border-t border-border flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            onClick={handleBackToExam}
-            disabled={
-              isNavigatingBack ||
-              submitting ||
-              isOpeningConfirm ||
-              navigatingToQuestion !== null
-            }
-            className="btn-secondary h-9 text-sm gap-2"
-          >
-            {isNavigatingBack ? (
-              <div className="spinner" style={{ width: 14, height: 14 }} />
-            ) : (
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <h3 className="text-sm font-semibold text-foreground">No questions found</h3>
+              <p className="text-xs text-muted-foreground mt-1">There are no questions matching this filter.</p>
+              <button 
+                onClick={() => setFilter("all")}
+                className="mt-6 text-xs font-bold text-accent hover:underline"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            )}
-            Back to Exam
-          </button>
-          <button
-            onClick={handleOpenConfirm}
-            disabled={
-              isOpeningConfirm ||
-              submitting ||
-              isNavigatingBack ||
-              navigatingToQuestion !== null
-            }
-            className="btn-primary h-9 text-sm gap-2"
-          >
-            {isOpeningConfirm ? (
-              <div
-                className="spinner"
-                style={{ width: 14, height: 14, borderTopColor: "white" }}
-              />
-            ) : (
-              <>
-                Submit Exam
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </>
-            )}
-          </button>
+                Clear filter
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
       {/* Tab Switch Warning Modal */}
       {controls.tabSwitchWarningEnabled && showTabWarning && (
-        <div className="fixed inset-0 z-[110] bg-black/60 flex items-center justify-center p-4">
-          <div className="card p-8 max-w-md w-full text-center border-danger/30">
-            <div className="w-20 h-20 rounded bg-danger/10 flex items-center justify-center mx-auto mb-6">
-              <svg
-                className="w-10 h-10 text-danger"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="card p-8 max-w-md w-full text-center border-danger/30 shadow-2xl animate-scale-in">
+            <div className="w-20 h-20 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Warning!
-            </h2>
-            <p className="text-danger font-semibold mb-4 text-lg">
-              What&apos;s up, Seems Like you cheated by tab switching
-            </p>
-            <p className="text-muted-foreground mb-8 text-sm">
-              Your activity has been logged and reported to the administrator.
-              Multiple violations may lead to disqualification.
+            <h2 className="text-2xl font-bold text-foreground mb-2">Proctoring Alert</h2>
+            <p className="text-danger font-semibold mb-3">Potential Academic Dishonesty Detected</p>
+            <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+              Our system detected a tab switch or window blur event. This activity has been logged and reported. 
+              Please maintain focus on the exam environment.
             </p>
             <button
               onClick={() => setShowTabWarning(false)}
-              className="w-full py-4 rounded bg-danger text-primary-foreground font-bold text-lg hover:bg-danger-hover transition-all"
+              className="w-full py-3.5 rounded-xl bg-danger text-white font-bold text-sm hover:bg-danger/90 active:scale-95 transition-all shadow-lg"
             >
-              I Understand
+              I Understand & Will Comply
             </button>
           </div>
         </div>
       )}
 
       {showConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="card p-8 max-w-md w-full mx-4">
+        <div className="fixed inset-0 z-[100] modal-overlay">
+          <div className="modal-content max-w-md p-8">
             <h2 className="text-xl font-bold text-foreground mb-2">
-              Submit Exam?
+              Submit Assessment?
             </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              You have answered {answered.length} of {questions.length}{" "}
-              questions. This action cannot be undone.
+            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+              You have answered <span className="font-bold text-foreground">{answered.length}</span> of <span className="font-bold text-foreground">{questions.length}</span> questions. 
+              Once submitted, you will not be able to modify your responses.
             </p>
             {unanswered.length > 0 && (
-              <div className="p-3 rounded bg-warning/10 border border-warning/20 text-warning text-xs mb-6 flex items-center gap-2">
-                <svg
-                  className="w-4 h-4 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
+              <div className="p-4 rounded-xl bg-warning/5 border border-warning/20 text-warning text-[13px] mb-8 flex items-start gap-3">
+                <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
-                {unanswered.length} question{unanswered.length !== 1 ? "s" : ""}{" "}
-                will be marked as unanswered.
+                <p>
+                  <span className="font-bold">{unanswered.length}</span> question{unanswered.length !== 1 ? "s" : ""} will be marked as unanswered. 
+                  This will significantly impact your final score.
+                </p>
               </div>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
-                className="flex-1 btn-secondary h-9 text-sm"
+                className="flex-1 btn-secondary h-11 rounded-xl"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="flex-1 btn-primary h-9 text-sm"
+                className="flex-1 btn-primary h-11 rounded-xl bg-accent hover:bg-accent-hover text-white shadow-lg"
               >
                 {submitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div
-                      className="spinner"
-                      style={{
-                        width: 14,
-                        height: 14,
-                        borderTopColor: "white",
-                      }}
-                    />
-                    Submitting...
-                  </span>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="spinner !w-4 !h-4 !border-t-white" />
+                    <span>Submitting...</span>
+                  </div>
                 ) : (
-                  "Confirm Submit"
+                  "Yes, Submit Now"
                 )}
               </button>
             </div>

@@ -38,7 +38,7 @@ export async function POST(
     .eq("id", examId)
     .single();
 
-  if (exam?.status !== "in_progress") {
+  if (exam?.status !== "in_progress" && exam?.status !== "closed") {
     return NextResponse.json({ error: "Exam is not active" }, { status: 400 });
   }
 
@@ -58,9 +58,13 @@ export async function POST(
     return NextResponse.json({ message: "Already submitted" });
   }
 
-  const dueAt = new Date(attempt.server_due_at).getTime();
-  if (Date.now() > dueAt + SUBMISSION_GRACE_MS) {
-    return NextResponse.json({ error: "Submission window has expired" }, { status: 403 });
+  // Only enforce time window when exam is still in_progress.
+  // When admin closes the exam, allow auto-submissions regardless of due time.
+  if (exam?.status === "in_progress") {
+    const dueAt = new Date(attempt.server_due_at).getTime();
+    if (Date.now() > dueAt + SUBMISSION_GRACE_MS) {
+      return NextResponse.json({ error: "Submission window has expired" }, { status: 403 });
+    }
   }
 
   const { totalScore, maxScore } = await scoreAttempt({

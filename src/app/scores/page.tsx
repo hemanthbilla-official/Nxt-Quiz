@@ -1,9 +1,10 @@
 "use client";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock, Trophy, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/browser";
 
 interface ScoreRecord {
   exam_id: string;
@@ -45,36 +46,75 @@ export default function MyScores() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const loadScores = async () => {
-      try {
-        const res = await fetch("/api/scores");
-        if (!res.ok) {
-          if (res.status === 401) return router.push("/login");
-          return;
-        }
-
-        const data = await res.json();
-
-        if (data.attempts) {
-          const formattedScores: ScoreRecord[] = (data.attempts as AttemptWithExam[]).map((a) => ({
-            exam_id: a.exam_id,
-            exam_title: a.exams?.title || "Unknown Exam",
-            total_score: a.total_score || 0,
-            max_score: a.max_score || 0,
-            submitted_at: a.submitted_at
-          }));
-          setScores(formattedScores.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()));
-        }
-      } catch (err) {
-        console.error("Failed to load scores:", err);
-      } finally {
-        setLoading(false);
+  const loadScores = useCallback(async () => {
+    try {
+      const res = await fetch("/api/scores");
+      if (!res.ok) {
+        if (res.status === 401) return router.push("/login");
+        return;
       }
-    };
 
-    loadScores();
+      const data = await res.json();
+
+      if (data.attempts) {
+        const formattedScores: ScoreRecord[] = (data.attempts as AttemptWithExam[]).map((a) => ({
+          exam_id: a.exam_id,
+          exam_title: a.exams?.title || "Unknown Exam",
+          total_score: a.total_score || 0,
+          max_score: a.max_score || 0,
+          submitted_at: a.submitted_at
+        }));
+        setScores(formattedScores.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()));
+      }
+    } catch (err) {
+      console.error("Failed to load scores:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
+
+  useEffect(() => {
+    loadScores();
+  }, [loadScores]);
+
+  // Realtime subscription for score updates (when exams are submitted/published)
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("scores-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "attempts",
+        },
+        () => {
+          loadScores();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "attempts",
+        },
+        () => {
+          loadScores();
+        },
+      )
+      .subscribe();
+
+    // Fallback polling every 10 seconds for local mode where realtime might not work
+    const pollInterval = setInterval(loadScores, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [loadScores]);
 
   if (loading) {
     return (

@@ -1,7 +1,14 @@
-import type { ChallengeMode, Question, Option, TestCase } from "@/lib/quizTypes";
+import type {
+  ChallengeMode,
+  Question,
+  Option,
+  TestCase,
+} from "@/lib/quizTypes";
 
 function getFunctionInput(testCase: TestCase) {
-  return "input" in testCase && Array.isArray(testCase.input) ? testCase.input : [];
+  return "input" in testCase && Array.isArray(testCase.input)
+    ? testCase.input
+    : [];
 }
 
 function getFunctionExpected(testCase: TestCase) {
@@ -33,13 +40,19 @@ export function QuestionFormModal({
         aria-modal="true"
         aria-labelledby="question-form-title"
       >
-        <h2 id="question-form-title" className="text-xl font-bold text-foreground mb-6">
+        <h2
+          id="question-form-title"
+          className="text-xl font-bold text-foreground mb-6"
+        >
           {editingId ? "Edit Question" : "Add New Question"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="question-topic" className="block text-sm font-medium text-muted-foreground mb-1">
+              <label
+                htmlFor="question-topic"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
                 Topic
               </label>
               <input
@@ -54,7 +67,10 @@ export function QuestionFormModal({
               />
             </div>
             <div>
-              <label htmlFor="question-difficulty" className="block text-sm font-medium text-muted-foreground mb-1">
+              <label
+                htmlFor="question-difficulty"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
                 Difficulty
               </label>
               <select
@@ -76,7 +92,10 @@ export function QuestionFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="question-type" className="block text-sm font-medium text-muted-foreground mb-1">
+              <label
+                htmlFor="question-type"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
                 Question Type
               </label>
               <select
@@ -96,7 +115,10 @@ export function QuestionFormModal({
               </select>
             </div>
             <div>
-              <label htmlFor="question-points" className="block text-sm font-medium text-muted-foreground mb-1">
+              <label
+                htmlFor="question-points"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
                 Points
               </label>
               <input
@@ -105,7 +127,10 @@ export function QuestionFormModal({
                 min={1}
                 value={form.points || 1}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, points: parseInt(e.target.value) || 1 }))
+                  setForm((prev) => ({
+                    ...prev,
+                    points: parseInt(e.target.value) || 1,
+                  }))
                 }
                 className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
               />
@@ -114,7 +139,10 @@ export function QuestionFormModal({
 
           {form.question_type === "code-output" && (
             <div>
-              <label htmlFor="question-code-snippet" className="block text-sm font-medium text-muted-foreground mb-1">
+              <label
+                htmlFor="question-code-snippet"
+                className="block text-sm font-medium text-muted-foreground mb-1"
+              >
                 Code Snippet
               </label>
               <textarea
@@ -133,7 +161,10 @@ export function QuestionFormModal({
           )}
 
           <div>
-            <label htmlFor="question-text" className="block text-sm font-medium text-muted-foreground mb-1">
+            <label
+              htmlFor="question-text"
+              className="block text-sm font-medium text-muted-foreground mb-1"
+            >
               Question Text
             </label>
             <textarea
@@ -157,14 +188,20 @@ export function QuestionFormModal({
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label htmlFor="challenge-mode" className="block text-sm font-medium text-muted-foreground mb-1">
-                      Challenge Mode
-                    </label>
-                    <select
-                      id="challenge-mode"
+                  <label
+                    htmlFor="challenge-mode"
+                    className="block text-sm font-medium text-muted-foreground mb-1"
+                  >
+                    Challenge Mode
+                  </label>
+                  <select
+                    id="challenge-mode"
                     value={form.challenge_mode || "function"}
                     onChange={(e) =>
-                        setForm((prev) => ({ ...prev, challenge_mode: e.target.value as ChallengeMode }))
+                      setForm((prev) => ({
+                        ...prev,
+                        challenge_mode: e.target.value as ChallengeMode,
+                      }))
                     }
                     className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all"
                   >
@@ -173,15 +210,21 @@ export function QuestionFormModal({
                   </select>
                 </div>
                 <div>
-                    <label htmlFor="function-name" className="block text-sm font-medium text-muted-foreground mb-1">
-                      Function Name
-                    </label>
-                    <input
-                      id="function-name"
+                  <label
+                    htmlFor="function-name"
+                    className="block text-sm font-medium text-muted-foreground mb-1"
+                  >
+                    Function Name
+                  </label>
+                  <input
+                    id="function-name"
                     type="text"
                     value={form.function_name || ""}
                     onChange={(e) =>
-                      setForm((prev) => ({ ...prev, function_name: e.target.value }))
+                      setForm((prev) => ({
+                        ...prev,
+                        function_name: e.target.value,
+                      }))
                     }
                     className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all font-mono"
                     placeholder="e.g. add, fibonacci"
@@ -190,14 +233,20 @@ export function QuestionFormModal({
                 </div>
               </div>
               <div>
-                  <label htmlFor="starter-code" className="block text-sm font-medium text-muted-foreground mb-1">
-                    Starter Code
-                  </label>
-                  <textarea
-                    id="starter-code"
+                <label
+                  htmlFor="starter-code"
+                  className="block text-sm font-medium text-muted-foreground mb-1"
+                >
+                  Starter Code
+                </label>
+                <textarea
+                  id="starter-code"
                   value={form.starter_code || ""}
                   onChange={(e) =>
-                    setForm((prev) => ({ ...prev, starter_code: e.target.value }))
+                    setForm((prev) => ({
+                      ...prev,
+                      starter_code: e.target.value,
+                    }))
                   }
                   className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
                   placeholder={`function ${form.function_name || "solution"}(a, b) {\n  // Write your code here\n}`}
@@ -253,7 +302,7 @@ export function QuestionFormModal({
                             aria-label={`Remove test case ${idx + 1}`}
                             onClick={() => {
                               const tcs = (form.test_cases || []).filter(
-                                (_: TestCase, i: number) => i !== idx
+                                (_: TestCase, i: number) => i !== idx,
                               );
                               setForm((prev) => ({ ...prev, test_cases: tcs }));
                             }}
@@ -289,9 +338,14 @@ export function QuestionFormModal({
                                 const tcs = [...(form.test_cases || [])];
                                 tcs[idx] = {
                                   ...tcs[idx],
-                                  input: Array.isArray(parsed) ? parsed : [parsed],
+                                  input: Array.isArray(parsed)
+                                    ? parsed
+                                    : [parsed],
                                 } as TestCase;
-                                setForm((prev) => ({ ...prev, test_cases: tcs }));
+                                setForm((prev) => ({
+                                  ...prev,
+                                  test_cases: tcs,
+                                }));
                               } catch {
                                 /* ignore invalid JSON while typing */
                               }
@@ -306,13 +360,21 @@ export function QuestionFormModal({
                           </label>
                           <input
                             type="text"
-                            value={JSON.stringify(getFunctionExpected(tc) ?? "")}
+                            value={JSON.stringify(
+                              getFunctionExpected(tc) ?? "",
+                            )}
                             onChange={(e) => {
                               try {
                                 const parsed = JSON.parse(e.target.value);
                                 const tcs = [...(form.test_cases || [])];
-                                tcs[idx] = { ...tcs[idx], expected: parsed } as TestCase;
-                                setForm((prev) => ({ ...prev, test_cases: tcs }));
+                                tcs[idx] = {
+                                  ...tcs[idx],
+                                  expected: parsed,
+                                } as TestCase;
+                                setForm((prev) => ({
+                                  ...prev,
+                                  test_cases: tcs,
+                                }));
                               } catch {
                                 /* ignore invalid JSON while typing */
                               }
@@ -404,7 +466,10 @@ export function QuestionFormModal({
             >
               {submitting ? (
                 <div className="flex items-center justify-center gap-2">
-                  <div className="spinner border-white" style={{ width: 20, height: 20 }} />
+                  <div
+                    className="spinner border-white"
+                    style={{ width: 20, height: 20 }}
+                  />
                   Saving...
                 </div>
               ) : editingId ? (

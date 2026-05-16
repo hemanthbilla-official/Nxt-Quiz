@@ -27,16 +27,14 @@ export function QuestionNavigator({
   return (
     <>
       <aside
-        className={`w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-border/50 p-4 lg:p-5 overflow-y-auto lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-all bg-background-secondary/30 ${
-          showNav ? "" : "hidden"
-        }`}
+        className={`border-t lg:border-t-0 lg:border-l border-border/50 p-4 lg:p-5 overflow-y-auto lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] transition-all bg-background-secondary/30 h-full w-72`}
       >
         <div className="flex items-center justify-between mb-5 pb-3 border-b border-border/50">
           <div className="flex items-center gap-2">
-            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Navigation</h3>
-            <span className="badge badge-accent">
-              {questions.length}
-            </span>
+            <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Questions
+            </h3>
+            <span className="badge badge-accent">{questions.length}</span>
           </div>
           <button
             onClick={() => setShowNav(false)}
@@ -50,19 +48,27 @@ export function QuestionNavigator({
         <div className="grid grid-cols-2 gap-2 mb-6">
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            <span className="text-[11px] font-medium text-muted-foreground">Answered</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Answered
+            </span>
           </div>
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
             <span className="w-1.5 h-1.5 rounded-full bg-warning" />
-            <span className="text-[11px] font-medium text-muted-foreground">Skipped</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Skipped
+            </span>
           </div>
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
             <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-            <span className="text-[11px] font-medium text-muted-foreground">Flagged</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              Flagged
+            </span>
           </div>
           <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-card border border-border/50">
             <span className="w-1.5 h-1.5 rounded-full bg-border" />
-            <span className="text-[11px] font-medium text-muted-foreground">To Do</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              To Do
+            </span>
           </div>
         </div>
 
@@ -70,7 +76,9 @@ export function QuestionNavigator({
         <div className="grid grid-cols-4 gap-1.5">
           {questions.map((q, i) => {
             const a = answers[q.id];
-            const isAnswered = !!(a?.selected_option_id || a?.code_answer?.trim());
+            const isAnswered = !!(
+              a?.selected_option_id || a?.code_answer?.trim()
+            );
             const isSkipped = !!a?.is_skipped;
             const isBookmarked = !!a?.is_bookmarked;
             const isCurrent = i === currentIndex;
@@ -80,15 +88,17 @@ export function QuestionNavigator({
                 key={q.id}
                 onClick={() => setCurrentIndex(i)}
                 className={`flex flex-col items-center justify-center h-10 rounded-lg transition-all border relative ${
-                  isCurrent 
-                    ? "border-accent bg-accent-muted ring-2 ring-accent/10" 
+                  isCurrent
+                    ? "border-accent bg-accent-muted ring-2 ring-accent/10"
                     : isAnswered
-                    ? "border-transparent bg-card hover:border-accent/30"
-                    : "border-transparent bg-background-secondary hover:border-border-hover"
+                      ? "border-transparent bg-card hover:border-accent/30"
+                      : "border-transparent bg-background-secondary hover:border-border-hover"
                 }`}
                 title={`Question ${i + 1}`}
               >
-                <span className={`text-sm font-semibold tabular-nums ${isCurrent ? "text-accent" : "text-foreground"}`}>
+                <span
+                  className={`text-sm font-semibold tabular-nums ${isCurrent ? "text-accent" : "text-foreground"}`}
+                >
                   {i + 1}
                 </span>
 

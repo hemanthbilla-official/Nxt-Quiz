@@ -15,6 +15,8 @@ type TestCasePanelProps = {
   testCases: TestCase[];
   runResults: RunCodeResponse | null;
   isRunning: boolean;
+  isCollapsed?: boolean;
+  onToggle?: () => void;
 };
 
 function formatValue(value: unknown): string {
@@ -151,15 +153,27 @@ export default function TestCasePanel({
   testCases,
   runResults,
   isRunning,
+  isCollapsed = false,
+  onToggle,
 }: TestCasePanelProps) {
   const resultMap = new Map(
     (runResults?.results || []).map((r) => [r.testCaseId, r])
   );
 
   return (
-    <div className="pe-testPanel">
-      <div className="pe-testPanelHeader">
-        <h3 className="pe-testPanelTitle">Test Cases</h3>
+    <div className={`pe-testPanel ${isCollapsed ? "pe-testPanelCollapsed" : ""}`}>
+      <div 
+        className="pe-testPanelHeader" 
+        onClick={onToggle}
+        style={{ cursor: onToggle ? "pointer" : "default" }}
+      >
+        <div className="pe-testPanelTitleWrap">
+          <span className="pe-testToggleIcon">
+            {isCollapsed ? "▶" : "▼"}
+          </span>
+          <h3 className="pe-testPanelTitle">Test Cases</h3>
+        </div>
+        
         {runResults && (
           <span
             className={`pe-testSummary ${
@@ -175,25 +189,28 @@ export default function TestCasePanel({
           <span className="pe-testSummaryRunning">Running...</span>
         )}
       </div>
-      <div className="pe-testCaseList">
-        {testCases.map((tc) => {
-          const result = resultMap.get(tc.id);
 
-          if (challengeMode === "function" && isFunctionTestCase(tc)) {
+      {!isCollapsed && (
+        <div className="pe-testCaseList">
+          {testCases.map((tc) => {
+            const result = resultMap.get(tc.id);
+
+            if (challengeMode === "function" && isFunctionTestCase(tc)) {
+              return (
+                <FunctionTestCaseRow key={tc.id} tc={tc} result={result} />
+              );
+            }
+
             return (
-              <FunctionTestCaseRow key={tc.id} tc={tc} result={result} />
+              <ComponentTestCaseRow
+                key={tc.id}
+                tc={tc as ComponentTestCase}
+                result={result}
+              />
             );
-          }
-
-          return (
-            <ComponentTestCaseRow
-              key={tc.id}
-              tc={tc as ComponentTestCase}
-              result={result}
-            />
-          );
-        })}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 }

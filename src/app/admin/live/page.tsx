@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Activity, AlertTriangle, ArrowUpRight, Radio } from "lucide-react";
+import { createClient } from "@/lib/supabase/browser";
 
 interface Exam {
   id: string;
@@ -70,8 +71,31 @@ export default function LiveMonitor() {
 
     scheduleNextPoll();
 
+    // Realtime subscriptions for instant updates
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("admin-live-monitor-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "exams" },
+        () => { fetchExams(true); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attempts" },
+        () => { fetchExams(true); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "exam_participants" },
+        () => { fetchExams(true); },
+      )
+      .subscribe();
+
     return () => {
       clearTimeout(intervalId);
+      supabase.removeChannel(channel);
     };
   }, [fetchExams]);
 

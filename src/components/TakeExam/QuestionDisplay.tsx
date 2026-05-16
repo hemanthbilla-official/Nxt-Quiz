@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Question, AnswerState } from "@/lib/quizTypes";
@@ -36,6 +36,7 @@ interface QuestionDisplayProps {
   setCurrentIndex: (index: number) => void;
   saveCodeAnswer: (qId: string, code: string) => void;
   controls: ExamControls;
+  isNavCollapsed: boolean;
 }
 
 export function QuestionDisplay({
@@ -52,10 +53,12 @@ export function QuestionDisplay({
   setCurrentIndex,
   saveCodeAnswer,
   controls,
+  isNavCollapsed,
 }: QuestionDisplayProps) {
   const router = useRouter();
   const [leftWidth, setLeftWidth] = useState(500);
   const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const savedWidth = localStorage.getItem("exam-editor-split");
@@ -63,6 +66,20 @@ export function QuestionDisplay({
       setLeftWidth(Number(savedWidth));
     }
   }, []);
+
+  // Implementation of 30/70 split when collapsed
+  useEffect(() => {
+    if (isProgrammingQuestion && isNavCollapsed && containerRef.current) {
+      // Small delay to allow main container to expand
+      const timer = setTimeout(() => {
+        if (containerRef.current) {
+          const containerWidth = containerRef.current.offsetWidth;
+          setLeftWidth(Math.floor(containerWidth * 0.3));
+        }
+      }, 350); // Matches the transition duration in TakeExamContent (300ms) + buffer
+      return () => clearTimeout(timer);
+    }
+  }, [isNavCollapsed, isProgrammingQuestion]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -101,11 +118,12 @@ export function QuestionDisplay({
     >
       {isProgrammingQuestion ? (
         <div
+          ref={containerRef}
           className={`flex flex-col lg:flex-row gap-0 h-[calc(100vh-10rem)] min-h-[600px] relative border border-border/50 rounded-xl overflow-hidden bg-card ${isResizing ? "cursor-col-resize select-none" : ""}`}
         >
           <div
             style={{ width: `${leftWidth}px` }}
-            className="flex-shrink-0 flex flex-col bg-card border-r border-border/50 overflow-hidden"
+            className={`flex-shrink-0 flex flex-col bg-card border-r border-border/50 overflow-hidden ${!isResizing ? "transition-[width] duration-300 ease-in-out" : ""}`}
           >
             <div className="px-4 py-3 border-b border-border/50 bg-background-secondary flex items-center justify-between">
               <span className="section-label text-accent">
@@ -138,7 +156,7 @@ export function QuestionDisplay({
             title="Drag to resize"
           >
             <div className={`w-[1px] h-full transition-colors ${isResizing ? "bg-accent/60" : "bg-border group-hover:bg-accent/40"}`} />
-            <div className={`absolute top-1/2 -translate-y-1/2 flex flex-col gap-[3px] p-1 rounded-sm bg-background border shadow-sm transition-all ${isResizing ? "border-accent/40 opacity-100" : "border-border opacity-0 group-hover:opacity-100 group-hover:border-accent/30"}`}>
+            <div className={`absolute top-1/2 -translate-y-1/2 flex flex-col gap-[3px] p-1 rounded-sm bg-background border shadow-sm transition-all ${isResizing ? "border-accent/40 opacity-100" : "border-border opacity-100 group-hover:border-accent/30"}`}>
               <div className={`w-0.5 h-0.5 rounded-full ${isResizing ? "bg-accent" : "bg-muted-foreground/60"}`} />
               <div className={`w-0.5 h-0.5 rounded-full ${isResizing ? "bg-accent" : "bg-muted-foreground/60"}`} />
               <div className={`w-0.5 h-0.5 rounded-full ${isResizing ? "bg-accent" : "bg-muted-foreground/60"}`} />

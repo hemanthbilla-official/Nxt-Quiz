@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, use, useMemo, Fragment } from "react";
+import { useState, useEffect, use, useMemo, Fragment, useCallback } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { createClient } from "@/lib/supabase/browser";
 import {
   BarChart,
   Bar,
@@ -227,17 +228,55 @@ export default function Analytics({
     "overview" | "questions" | "students" | "time"
   >("overview");
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      const res = await fetch(`/api/admin/exams/${examId}/analytics`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
+  const fetchAnalytics = useCallback(async (isBackground = false) => {
+    const res = await fetch(`/api/admin/exams/${examId}/analytics`);
+    if (res.ok) {
+      const json = await res.json();
+      setData(json);
+    }
+    if (!isBackground) {
       setLoading(false);
-    };
-    fetchAnalytics();
+    }
   }, [examId]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchAnalytics(false);
+    
+    const interval = setInterval(() => {
+      fetchAnalytics(true);
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [fetchAnalytics]);
+
+  // Realtime subscription for instant refresh on exam, attempt, and participant changes
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel(`admin-analytics-realtime-${examId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "exams", filter: `id=eq.${examId}` },
+        () => { fetchAnalytics(true); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attempts", filter: `exam_id=eq.${examId}` },
+        () => { fetchAnalytics(true); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "exam_participants", filter: `exam_id=eq.${examId}` },
+        () => { fetchAnalytics(true); },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [examId, fetchAnalytics]);
 
   /* – Derived data – */
 
