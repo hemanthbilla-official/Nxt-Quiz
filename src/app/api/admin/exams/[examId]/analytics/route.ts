@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin-auth";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 10;
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ examId: string }> },

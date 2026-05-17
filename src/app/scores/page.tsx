@@ -1,10 +1,13 @@
 "use client";
 
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock, Trophy, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/browser";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryClient";
+import { SkeletonCard } from "@/components/ui/Skeleton";
 
 interface ScoreRecord {
   exam_id: string;
@@ -42,42 +45,39 @@ function formatDate(dateStr: string): string {
 }
 
 export default function MyScores() {
-  const [scores, setScores] = useState<ScoreRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const loadScores = useCallback(async () => {
-    try {
+  const { data: rawData, isLoading, refetch } = useQuery({
+    queryKey: queryKeys.scores,
+    queryFn: async () => {
       const res = await fetch("/api/scores");
       if (!res.ok) {
-        if (res.status === 401) return router.push("/login");
-        return;
+        if (res.status === 401) {
+          router.push("/login");
+          throw new Error("Unauthorized");
+        }
+        throw new Error("Failed to load scores");
       }
+      const json = await res.json();
+      return json.attempts as AttemptWithExam[];
+    },
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
 
-      const data = await res.json();
+  const scores = useMemo<ScoreRecord[]>(() => {
+    if (!rawData) return [];
+    return rawData.map((a) => ({
+      exam_id: a.exam_id,
+      exam_title: a.exams?.title || "Unknown Exam",
+      total_score: a.total_score || 0,
+      max_score: a.max_score || 0,
+      submitted_at: a.submitted_at,
+    })).sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime());
+  }, [rawData]);
 
-      if (data.attempts) {
-        const formattedScores: ScoreRecord[] = (data.attempts as AttemptWithExam[]).map((a) => ({
-          exam_id: a.exam_id,
-          exam_title: a.exams?.title || "Unknown Exam",
-          total_score: a.total_score || 0,
-          max_score: a.max_score || 0,
-          submitted_at: a.submitted_at
-        }));
-        setScores(formattedScores.sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime()));
-      }
-    } catch (err) {
-      console.error("Failed to load scores:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    loadScores();
-  }, [loadScores]);
-
-  // Realtime subscription for score updates (when exams are submitted/published)
+  // Realtime subscription - only refetch query instead of full reload
   useEffect(() => {
     const supabase = createClient();
 
@@ -85,42 +85,37 @@ export default function MyScores() {
       .channel("scores-realtime")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "attempts",
-        },
+        { event: "*", schema: "public", table: "attempts" },
         () => {
-          loadScores();
-        },
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "attempts",
-        },
-        () => {
-          loadScores();
+          queryClient.invalidateQueries({ queryKey: queryKeys.scores });
         },
       )
       .subscribe();
 
-    // Fallback polling every 10 seconds for local mode where realtime might not work
-    const pollInterval = setInterval(loadScores, 10000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(pollInterval);
     };
-  }, [loadScores]);
+  }, [queryClient]);
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
-        <div className="w-5 h-5 border-2 border-muted-foreground border-t-foreground rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium text-muted-foreground tracking-tight">Loading performance...</p>
+      <div className="min-h-screen bg-background font-sans selection:bg-accent/20 pb-20">
+        <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+          <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-md bg-muted animate-pulse" />
+              <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+            </div>
+          </div>
+        </header>
+        <main className="max-w-5xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-4">
+          <div className="h-6 w-32 bg-muted rounded animate-pulse" />
+          <div className="space-y-3">
+            {[...Array(4)].map((_, i) => (
+              <SkeletonCard key={i} className="h-20" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

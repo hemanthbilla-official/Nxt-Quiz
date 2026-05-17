@@ -1,22 +1,32 @@
 "use client";
 
-import { useState, useEffect, use, useMemo, Fragment, useCallback } from "react";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import React, { useState, useEffect, use, useMemo, Fragment, useCallback, memo } from "react";
 import { createClient } from "@/lib/supabase/browser";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  PieChart,
-  Pie,
-  Legend,
-} from "recharts";
+import dynamic from "next/dynamic";
+import MarkdownViewer from "@/components/Common/MarkdownViewer";
+
+const ScoreDistributionChart = dynamic(
+  () => import("@/components/Admin/Analytics/ScoreDistributionChart"),
+  { ssr: false, loading: () => <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">Loading chart...</div> }
+);
+
+const TopicPerformanceChart = dynamic(
+  () => import("@/components/Admin/Analytics/TopicPerformanceChart"),
+  { ssr: false, loading: () => <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">Loading chart...</div> }
+);
+
+const GradeDistributionChart = dynamic(
+  () => import("@/components/Admin/Analytics/GradeDistributionChart"),
+  { ssr: false, loading: () => <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">Loading chart...</div> }
+);
+
+const lazyLoadPDF = async () => {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import("jspdf"),
+    import("jspdf-autotable"),
+  ]);
+  return { jsPDF, autoTable };
+};
 
 /* ──────────────────────────── TYPES ──────────────────────────── */
 
@@ -240,43 +250,61 @@ export default function Analytics({
   }, [examId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAnalytics(false);
-    
-    const interval = setInterval(() => {
-      fetchAnalytics(true);
-    }, 5000);
-    
-    return () => clearInterval(interval);
-  }, [fetchAnalytics]);
 
-  // Realtime subscription for instant refresh on exam, attempt, and participant changes
-  useEffect(() => {
     const supabase = createClient();
+    let isRealtimeConnected = false;
+    let fallbackInterval: ReturnType<typeof setTimeout> | undefined = undefined;
+    let refreshTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+
+    const scheduleRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        fetchAnalytics(true);
+      }, 2000);
+    };
 
     const channel = supabase
       .channel(`admin-analytics-realtime-${examId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "exams", filter: `id=eq.${examId}` },
-        () => { fetchAnalytics(true); },
+        scheduleRefresh,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "attempts", filter: `exam_id=eq.${examId}` },
-        () => { fetchAnalytics(true); },
+        scheduleRefresh,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "exam_participants", filter: `exam_id=eq.${examId}` },
-        () => { fetchAnalytics(true); },
+        scheduleRefresh,
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          isRealtimeConnected = true;
+          if (fallbackInterval) {
+            clearInterval(fallbackInterval);
+            fallbackInterval = undefined;
+          }
+        }
+      });
+
+    // Fallback polling only if WebSocket fails to connect after 10s
+    fallbackInterval = setTimeout(() => {
+      if (!isRealtimeConnected) {
+        const pollInterval = setInterval(() => fetchAnalytics(true), 5000);
+        return () => clearInterval(pollInterval);
+      }
+    }, 10000);
 
     return () => {
+      clearTimeout(fallbackInterval);
+      if (refreshTimeout) clearTimeout(refreshTimeout);
       supabase.removeChannel(channel);
     };
-  }, [examId, fetchAnalytics]);
+  }, [fetchAnalytics, examId]);
 
   /* – Derived data – */
 
@@ -285,9 +313,9 @@ export default function Analytics({
     const q = studentSearch.toLowerCase();
     const filtered = data.studentResults.filter(
       (s) =>
-        s.name?.toLowerCase().includes(q) ||
-        s.email?.toLowerCase().includes(q) ||
-        s.college_id?.toLowerCase().includes(q),
+        (s.name?.toLowerCase() || "").includes(q) ||
+        (s.email?.toLowerCase() || "").includes(q) ||
+        (s.college_id?.toLowerCase() || "").includes(q),
     );
     return [...filtered].sort((a, b) => {
       const key = studentSort.key as keyof StudentResult;
@@ -295,12 +323,13 @@ export default function Analytics({
       const bVal = b[key] ?? 0;
       if (typeof aVal === "string" && typeof bVal === "string") {
         return studentSort.dir === "asc"
-          ? aVal.localeCompare(bVal)
-          : bVal.localeCompare(aVal);
+          ? (aVal || "").localeCompare(bVal || "")
+          : (bVal || "").localeCompare(aVal || "");
       }
-      return studentSort.dir === "asc"
-        ? Number(aVal) - Number(bVal)
-        : Number(bVal) - Number(aVal);
+      const nA = Number(aVal);
+      const nB = Number(bVal);
+      if (isNaN(nA) || isNaN(nB)) return 0;
+      return studentSort.dir === "asc" ? nA - nB : nB - nA;
     });
   }, [data, studentSearch, studentSort]);
 
@@ -310,9 +339,10 @@ export default function Analytics({
       const key = questionSort.key as keyof DetailedQuestion;
       const aVal = a[key] ?? 0;
       const bVal = b[key] ?? 0;
-      return questionSort.dir === "asc"
-        ? Number(aVal) - Number(bVal)
-        : Number(bVal) - Number(aVal);
+      const nA = Number(aVal);
+      const nB = Number(bVal);
+      if (isNaN(nA) || isNaN(nB)) return 0;
+      return questionSort.dir === "asc" ? nA - nB : nB - nA;
     });
   }, [data, questionSort]);
 
@@ -348,18 +378,15 @@ export default function Analytics({
     URL.revokeObjectURL(url);
   };
 
-  const exportPDF = () => {
+  const exportPDF = async () => {
     if (!data) return;
 
-    // Define type for jsPDF with autoTable extension
-    interface AutoTableDoc extends jsPDF {
-      lastAutoTable?: { finalY: number };
-    }
+    const { jsPDF: JsPDF, autoTable: AutoTable } = await lazyLoadPDF();
 
-    const doc = new jsPDF() as AutoTableDoc;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc: any = new JsPDF();
     const { examMeta, summary, studentResults } = data;
 
-    // Header
     doc.setFontSize(20);
     doc.text("Examination Report", 14, 22);
     doc.setFontSize(12);
@@ -367,14 +394,13 @@ export default function Analytics({
     doc.text(`${examMeta.title} (${examMeta.examCode})`, 14, 30);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 36);
 
-    // Summary Section
     doc.setDrawColor(200);
     doc.line(14, 42, 196, 42);
     doc.setFontSize(14);
     doc.setTextColor(0);
     doc.text("Summary Statistics", 14, 50);
     
-    autoTable(doc, {
+    AutoTable(doc, {
       startY: 55,
       head: [["Metric", "Value"]],
       body: [
@@ -388,7 +414,6 @@ export default function Analytics({
       headStyles: { fillColor: [79, 70, 229] },
     });
 
-    // Student Results Table
     const finalY1 = doc.lastAutoTable?.finalY ?? 100;
     doc.setFontSize(14);
     doc.text("Student Results", 14, finalY1 + 15);
@@ -404,7 +429,7 @@ export default function Analytics({
       formatTime(s.timeToSubmitSeconds),
     ]);
 
-    autoTable(doc, {
+    AutoTable(doc, {
       startY: finalY1 + 20,
       head: [["Rank", "Name", "ID", "Score", "%", "Grade", "Switches", "Time"]],
       body: tableData,
@@ -412,7 +437,7 @@ export default function Analytics({
       headStyles: { fillColor: [79, 70, 229] },
       styles: { fontSize: 8 },
       columnStyles: {
-        6: { fontStyle: 'bold', textColor: [220, 38, 38] } // Red for switches
+        6: { fontStyle: 'bold', textColor: [220, 38, 38] }
       }
     });
 
@@ -575,20 +600,12 @@ export default function Analytics({
             ))}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
             {/* Score Distribution */}
             <div>
               <h3 className="text-xs font-semibold text-foreground mb-6 uppercase tracking-wider">Score Distribution</h3>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.scoreDistribution} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/20" />
-                    <XAxis dataKey="range" tick={{ fill: "currentColor", fontSize: 10 }} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: "currentColor", fontSize: 10 }} allowDecimals={false} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "6px", fontSize: "12px", color: "var(--foreground)" }} cursor={{ fill: "var(--muted)" }} />
-                    <Bar dataKey="count" fill="currentColor" className="text-foreground" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ScoreDistributionChart data={data.scoreDistribution} />
               </div>
             </div>
 
@@ -596,15 +613,7 @@ export default function Analytics({
             <div>
               <h3 className="text-xs font-semibold text-foreground mb-6 uppercase tracking-wider">Topic Performance</h3>
               <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.topicPerformance} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-border/20" />
-                    <XAxis type="number" domain={[0, 100]} tick={{ fill: "currentColor", fontSize: 10 }} unit="%" className="text-muted-foreground" axisLine={false} tickLine={false} />
-                    <YAxis dataKey="topic" type="category" tick={{ fill: "currentColor", fontSize: 10 }} width={100} className="text-muted-foreground" axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ backgroundColor: "var(--background)", borderColor: "var(--border)", borderRadius: "6px", fontSize: "12px", color: "var(--foreground)" }} cursor={{ fill: "var(--muted)" }} formatter={(value, _name, props) => [`${value}% (${(props as any).payload.questionCount} Qs)`, "Avg Correct"]} />
-                    <Bar dataKey="avgCorrectPct" fill="currentColor" className="text-foreground" radius={[0, 2, 2, 0]} barSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <TopicPerformanceChart data={data.topicPerformance} />
               </div>
             </div>
           </div>
@@ -693,7 +702,12 @@ export default function Analytics({
                     >
                       <td className="py-3 px-2 font-mono text-muted-foreground text-xs">{q.position}</td>
                       <td className="py-3 px-2">
-                        <p className="text-foreground line-clamp-1 text-sm">{q.questionText}</p>
+                        <div className="flex items-center gap-2">
+                          {q.questionType === "programming" && (
+                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-primary/10 text-primary flex-shrink-0">Code</span>
+                          )}
+                          <p className="text-foreground line-clamp-1 text-sm">{q.questionText}</p>
+                        </div>
                       </td>
                       <td className="py-3 px-2 text-muted-foreground text-xs">{q.topic}</td>
                       <td className="py-3 px-2 text-muted-foreground text-xs">{q.difficulty}</td>
@@ -710,7 +724,13 @@ export default function Analytics({
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div>
                               <p className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Full Question</p>
-                              <p className="text-sm text-foreground bg-background p-4 rounded-md border border-border/50">{q.questionText}</p>
+                              {q.questionType === "programming" ? (
+                                <div className="text-sm text-foreground [&_p]:mb-2 [&_p]:leading-relaxed [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[13px] [&_code]:font-mono [&_pre]:bg-muted/30 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:border [&_pre]:border-border/50 [&_pre]:text-[13px]">
+                                  <MarkdownViewer content={q.questionText} />
+                                </div>
+                              ) : (
+                                <p className="text-sm text-foreground bg-background p-4 rounded-md border border-border/50">{q.questionText}</p>
+                              )}
                               {q.codeSnippet && <pre className="code-block mt-3 text-xs p-4 rounded-md bg-background border border-border/50">{q.codeSnippet}</pre>}
                             </div>
                             <div>
@@ -726,11 +746,25 @@ export default function Analytics({
                                     const isCorrect = optId === q.correctOptionId;
                                     return (
                                       <div key={optId} className="flex items-center gap-3">
-                                        <span className={`w-6 h-6 rounded flex items-center justify-center text-xs font-medium ${isCorrect ? "bg-foreground text-background" : "bg-muted text-muted-foreground"}`}>{optId}</span>
-                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                          <div className={`h-full rounded-full ${isCorrect ? "bg-foreground" : "bg-muted-foreground/50"}`} style={{ width: `${pct}%` }} />
+                                        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${isCorrect ? "bg-success text-white shadow-sm shadow-success/30" : "bg-muted text-muted-foreground"}`}>
+                                          {isCorrect ? "✓" : optId}
+                                        </span>
+                                        <div className="flex-1">
+                                          <div className={`${isCorrect ? "h-3.5" : "h-1.5"} bg-muted rounded-full overflow-hidden ${isCorrect ? "ring-2 ring-success/20" : ""}`}>
+                                            <div
+                                              className={`h-full rounded-full transition-all ${
+                                                isCorrect
+                                                  ? "bg-gradient-to-r from-success to-emerald-400 shadow-sm shadow-success/30"
+                                                  : "bg-muted-foreground/40"
+                                              }`}
+                                              style={{ width: `${pct}%` }}
+                                            />
+                                          </div>
                                         </div>
-                                        <span className="text-xs font-medium text-foreground w-12 text-right">{pct}%</span>
+                                        <div className="flex items-center gap-1.5 w-20 justify-end">
+                                          <span className={`text-xs font-bold ${isCorrect ? "text-success" : "text-foreground"}`}>{pct}%</span>
+                                          {isCorrect && <span className="text-[9px] text-success/70 font-semibold uppercase tracking-wider">Correct</span>}
+                                        </div>
                                       </div>
                                     );
                                   })

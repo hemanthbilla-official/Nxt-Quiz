@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import MarkdownViewer from "@/components/Common/MarkdownViewer";
 
 interface AnswerState {
   question_id: string;
@@ -25,6 +26,7 @@ interface Question {
   id: string;
   topic: string;
   question: string;
+  question_type: string;
   position: number;
 }
 
@@ -584,9 +586,15 @@ export default function ReviewExam({
                           {questions.indexOf(q) + 1}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-foreground font-medium whitespace-normal break-words leading-relaxed group-hover:text-accent transition-colors" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {q.question}
-                          </p>
+                          {q.question_type === "programming" ? (
+                            <div className="text-sm text-foreground [&_p]:mb-2 [&_p]:leading-relaxed [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[13px] [&_code]:font-mono [&_pre]:bg-muted/30 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:border [&_pre]:border-border/50 [&_pre]:text-[13px]">
+                              <MarkdownViewer content={q.question} />
+                            </div>
+                          ) : (
+                            <p className="text-sm text-foreground font-medium whitespace-normal break-words leading-relaxed group-hover:text-accent transition-colors" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                              {q.question}
+                            </p>
+                          )}
                           <p className="text-[11px] text-muted-foreground mt-1 uppercase tracking-wider">
                             {q.topic}
                           </p>

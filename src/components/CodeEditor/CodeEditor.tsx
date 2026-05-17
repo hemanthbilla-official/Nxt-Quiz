@@ -1,11 +1,9 @@
 "use client";
 
-import { css } from "@codemirror/lang-css";
-import { javascript } from "@codemirror/lang-javascript";
 import { EditorState, StateField, type Extension } from "@codemirror/state";
 import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import dynamic from "next/dynamic";
-import { useMemo, type ComponentType } from "react";
+import { useMemo, useState, useEffect, memo, type ComponentType } from "react";
 import type { ReactCodeMirrorProps } from "@uiw/react-codemirror";
 import type { EditorLanguage } from "@/lib/editorTypes";
 
@@ -56,23 +54,38 @@ function errorLineExtension(line?: number): Extension {
   });
 }
 
-export default function CodeEditor({
+export default memo(function CodeEditor({
   value,
   language,
   theme,
   errorLine,
   onChange,
 }: CodeEditorProps) {
-  const extensions = useMemo(() => {
-    const languageExtension =
-      language === "css" ? css() : javascript({ jsx: true });
+  const [langExtension, setLangExtension] = useState<Extension[]>([]);
 
+  useEffect(() => {
+    let isMounted = true;
+    if (language === "css") {
+      import("@codemirror/lang-css").then((m) => {
+        if (isMounted) setLangExtension([m.css()]);
+      });
+    } else {
+      import("@codemirror/lang-javascript").then((m) => {
+        if (isMounted) setLangExtension([m.javascript({ jsx: true })]);
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [language]);
+
+  const extensions = useMemo(() => {
     return [
-      languageExtension,
+      ...langExtension,
       EditorView.lineWrapping,
       errorLineExtension(errorLine),
     ];
-  }, [errorLine, language]);
+  }, [errorLine, langExtension]);
 
   return (
     <CodeMirror
@@ -90,4 +103,4 @@ export default function CodeEditor({
       onChange={onChange}
     />
   );
-}
+});

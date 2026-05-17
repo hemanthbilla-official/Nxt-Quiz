@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/browser";
 import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import MarkdownViewer from "@/components/Common/MarkdownViewer";
 import { 
   Check, Clock, Trophy, X, AlertCircle, 
   Calendar, ChevronDown, ChevronUp, Code, FileText, Terminal, PlayCircle 
@@ -114,8 +115,11 @@ function QuestionRow({ result: r, index: idx, isPublished, isExpanded, onToggle 
           </div>
         )}
 
-        <div className="flex-1 truncate font-medium text-foreground">
-           {r.question}
+        <div className="flex-1 truncate font-medium text-foreground flex items-center gap-2">
+           {isProgramming && (
+             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-lg bg-primary/10 text-primary flex-shrink-0">Code</span>
+           )}
+           <span className="truncate">{r.question}</span>
         </div>
 
         <div className="shrink-0 hidden md:flex items-center gap-3 text-xs">
@@ -131,9 +135,15 @@ function QuestionRow({ result: r, index: idx, isPublished, isExpanded, onToggle 
       {/* Expanded Details */}
       {isExpanded && (
         <div className="p-4 pl-14 pr-4 border-t border-border/50 bg-muted/10 pb-6 space-y-6">
-           <div className="text-sm leading-relaxed text-foreground/90 font-medium">
-             {r.question}
-           </div>
+           {isProgramming ? (
+             <div className="text-sm text-foreground [&_p]:mb-2 [&_p]:leading-relaxed [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[13px] [&_code]:font-mono [&_pre]:bg-muted/30 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:border [&_pre]:border-border/50 [&_pre]:text-[13px]">
+               <MarkdownViewer content={r.question} />
+             </div>
+           ) : (
+             <div className="text-sm leading-relaxed text-foreground/90 font-medium">
+               {r.question}
+             </div>
+           )}
 
            {/* Code Snippet */}
            {r.codeSnippet && (

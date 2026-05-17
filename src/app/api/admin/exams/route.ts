@@ -4,19 +4,30 @@ import { nanoid } from "nanoid";
 import { getAdminUser } from "@/lib/admin-auth";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 30;
+
 // GET — list all exams
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
+  const url = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+  const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get("pageSize") || "50")));
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   // STD-02: Single query with relation count instead of N+1
   const supabase = createAdminClient();
-  const { data: exams } = await supabase
+  const { data: exams, count } = await supabase
     .from("exams")
-    .select("*, exam_participants(count)")
-    .order("created_at", { ascending: false });
+    .select("*, exam_participants(count)", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
   const enriched = (exams || []).map((exam) => ({
     ...exam,
@@ -28,7 +39,7 @@ export async function GET() {
     .from("questions")
     .select("*", { count: "exact", head: true });
 
-  return NextResponse.json({ exams: enriched, questionsCount: questionsCount || 0 });
+  return NextResponse.json({ exams: enriched, total: count || 0, page, pageSize, questionsCount: questionsCount || 0 });
 }
 
 // POST — create new exam

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
+import MarkdownViewer from "@/components/Common/MarkdownViewer";
 
 interface Question {
   id: string;
@@ -10,11 +11,13 @@ interface Question {
   options: unknown;
   correct_option_id: string;
   explanation: string;
+  question_type?: string;
 }
 
 interface Answer {
   id: string;
   selected_option_id: string;
+  code_answer?: string;
   questions: Question;
 }
 
@@ -79,7 +82,8 @@ export default function StudentDetails({
   const attempt = data.attempts.find(a => a.id === selectedAttempt) || data.attempts[0];
 
   const filteredAnswers = attempt?.answers?.filter((ans) => {
-    const isCorrect = ans.selected_option_id === ans.questions.correct_option_id;
+    const isProgramming = ans.questions.question_type === "programming";
+    const isCorrect = !isProgramming && ans.selected_option_id === ans.questions.correct_option_id;
     const isSkipped = !ans.selected_option_id;
 
     if (filter === "All") return true;
@@ -185,7 +189,8 @@ export default function StudentDetails({
                 <div className="flex flex-wrap items-center gap-1 bg-card border border-border p-1 rounded">
                   {(["All", "Correct", "Incorrect", "Skipped"] as const).map((f) => {
                     const count = attempt.answers?.filter(ans => {
-                      const isCorrect = ans.selected_option_id === ans.questions.correct_option_id;
+                      const isProgramming = ans.questions.question_type === "programming";
+                      const isCorrect = !isProgramming && ans.selected_option_id === ans.questions.correct_option_id;
                       const isSkipped = !ans.selected_option_id;
                       if (f === "All") return true;
                       if (f === "Correct") return isCorrect;
@@ -229,51 +234,70 @@ export default function StudentDetails({
                 ) : (
                   filteredAnswers?.map((ans) => {
                     const idx = attempt.answers?.findIndex(a => a.id === ans.id) ?? 0;
-                    const isCorrect = ans.selected_option_id === ans.questions.correct_option_id;
-                    const opts = typeof ans.questions.options === 'string' ? JSON.parse(ans.questions.options) : ans.questions.options;
+                    const isProgramming = ans.questions.question_type === "programming";
+                    const isCorrect = !isProgramming && ans.selected_option_id === ans.questions.correct_option_id;
+                    const opts = !isProgramming && (typeof ans.questions.options === 'string' ? JSON.parse(ans.questions.options) : ans.questions.options);
                     
                     return (
                       <div key={ans.id} className="relative pl-8">
                         <div className="absolute left-0 top-0 bottom-0 w-px bg-border" />
-                        <div className={`absolute left-[-4px] top-1.5 w-2 h-2 rounded-full ${isCorrect ? "bg-success" : ans.selected_option_id ? "bg-danger" : "bg-muted"}`} />
+                        {!isProgramming && (
+                          <div className={`absolute left-[-4px] top-1.5 w-2 h-2 rounded-full ${isCorrect ? "bg-success" : ans.selected_option_id ? "bg-danger" : "bg-muted"}`} />
+                        )}
                         
                         <div className="mb-4">
                           <div className="flex items-center gap-3 mb-2">
                             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Question {idx + 1}</span>
                             <span className="text-[10px] px-2 py-0.5 rounded bg-border/50 text-muted-foreground">{ans.questions.topic}</span>
+                            {isProgramming && (
+                              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-lg bg-primary/10 text-primary">Code</span>
+                            )}
                           </div>
-                          <h4 className="text-foreground font-medium leading-relaxed">{ans.questions.question}</h4>
+                          {isProgramming ? (
+                            <div className="text-sm text-foreground [&_p]:mb-2 [&_p]:leading-relaxed [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[13px] [&_code]:font-mono [&_pre]:bg-muted/30 [&_pre]:p-3 [&_pre]:rounded [&_pre]:overflow-x-auto [&_pre]:my-2 [&_pre]:border [&_pre]:border-border/50 [&_pre]:text-[13px]">
+                              <MarkdownViewer content={ans.questions.question} />
+                            </div>
+                          ) : (
+                            <h4 className="text-foreground font-medium leading-relaxed">{ans.questions.question}</h4>
+                          )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {opts.map((opt: { id: string; text: string }) => {
-                            const isSelected = ans.selected_option_id === opt.id;
-                            const isCorrectOpt = ans.questions.correct_option_id === opt.id;
-                            
-                            let borderColor = 'border-border';
-                            let bgColor = 'bg-card';
+                        {isProgramming ? (
+                          <div className="border border-border/50 rounded-lg overflow-hidden">
+                            <div className="px-4 py-2 bg-background-secondary border-b border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Code Answer</div>
+                            <pre className="p-4 text-sm font-mono text-foreground overflow-x-auto bg-card">{ans.code_answer || "No code submitted"}</pre>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {opts.map((opt: { id: string; text: string }) => {
+                              const isSelected = ans.selected_option_id === opt.id;
+                              const isCorrectOpt = ans.questions.correct_option_id === opt.id;
+                              
+                              let borderColor = 'border-border';
+                              let bgColor = 'bg-card';
 
-                            if (isCorrectOpt) {
-                              borderColor = 'border-success';
-                              bgColor = 'bg-success/5';
-                            } else if (isSelected && !isCorrectOpt) {
-                              borderColor = 'border-danger';
-                              bgColor = 'bg-danger/5';
-                            }
+                              if (isCorrectOpt) {
+                                borderColor = 'border-success';
+                                bgColor = 'bg-success/5';
+                              } else if (isSelected && !isCorrectOpt) {
+                                borderColor = 'border-danger';
+                                bgColor = 'bg-danger/5';
+                              }
 
-                            return (
-                              <div
-                                key={opt.id}
-                                className={`p-3 rounded border-2 text-sm flex gap-3 ${borderColor} ${bgColor} text-foreground`}
-                              >
-                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${isCorrectOpt ? 'bg-success text-primary-foreground' : isSelected ? 'bg-danger text-primary-foreground' : 'bg-border/50 text-muted-foreground'}`}>
-                                  {opt.id}
-                                </span>
-                                <span className="pt-0.5">{opt.text}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                              return (
+                                <div
+                                  key={opt.id}
+                                  className={`p-3 rounded border-2 text-sm flex gap-3 ${borderColor} ${bgColor} text-foreground`}
+                                >
+                                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${isCorrectOpt ? 'bg-success text-primary-foreground' : isSelected ? 'bg-danger text-primary-foreground' : 'bg-border/50 text-muted-foreground'}`}>
+                                    {opt.id}
+                                  </span>
+                                  <span className="pt-0.5">{opt.text}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
 
                         <div className="mt-4 p-4 rounded bg-primary/5 border border-primary/10 text-xs">
                           <p className="font-bold text-primary mb-1 uppercase tracking-widest">Explanation</p>

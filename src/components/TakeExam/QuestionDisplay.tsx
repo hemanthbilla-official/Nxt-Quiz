@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import type { Question, AnswerState } from "@/lib/quizTypes";
 import type { ExamControls } from "@/lib/exam-controls";
-import { markExamNavigationIntent } from "@/lib/exam-navigation";
 import MarkdownViewer from "@/components/Common/MarkdownViewer";
 import { Bookmark, SkipForward, X, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -37,9 +35,10 @@ interface QuestionDisplayProps {
   saveCodeAnswer: (qId: string, code: string) => void;
   controls: ExamControls;
   isNavCollapsed: boolean;
+  onNavigateToReview?: () => void;
 }
 
-export function QuestionDisplay({
+export const QuestionDisplay = memo(function QuestionDisplay({
   currentQuestion,
   currentAnswer,
   isProgrammingQuestion,
@@ -54,8 +53,8 @@ export function QuestionDisplay({
   saveCodeAnswer,
   controls,
   isNavCollapsed,
+  onNavigateToReview,
 }: QuestionDisplayProps) {
-  const router = useRouter();
   const [leftWidth, setLeftWidth] = useState(500);
   const [isResizing, setIsResizing] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -80,6 +79,14 @@ export function QuestionDisplay({
       return () => clearTimeout(timer);
     }
   }, [isNavCollapsed, isProgrammingQuestion]);
+
+  const initialSavedCode = useMemo(() => {
+    return currentAnswer?.code_answer;
+  }, [currentQuestion.id]); // Only update when question changes
+
+  const handleCodeChange = useCallback((code: string) => {
+    saveCodeAnswer(currentQuestion.id, code);
+  }, [currentQuestion.id, saveCodeAnswer]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -170,8 +177,8 @@ export function QuestionDisplay({
               challengeMode={currentQuestion.challengeMode || "function"}
               starterCode={currentQuestion.starterCode || ""}
               testCases={currentQuestion.testCases || []}
-              savedCode={currentAnswer?.code_answer}
-              onCodeChange={(code) => saveCodeAnswer(currentQuestion.id, code)}
+              savedCode={initialSavedCode}
+              onCodeChange={handleCodeChange}
               examId={examId}
               controls={controls}
             />
@@ -285,10 +292,7 @@ export function QuestionDisplay({
           </button>
           {currentIndex === totalQuestions - 1 ? (
             <button
-              onClick={() => {
-                markExamNavigationIntent();
-                router.push(`/exam/${examId}/review`);
-              }}
+              onClick={() => onNavigateToReview?.()}
               className="btn-primary h-8 text-xs"
             >
               Review &amp; Submit →
@@ -308,4 +312,4 @@ export function QuestionDisplay({
       </div>
     </div>
   );
-}
+});

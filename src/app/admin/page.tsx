@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, memo, useMemo } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   Inbox,
   ArrowRight
 } from "lucide-react";
+import { Skeleton, SkeletonCard } from "@/components/ui/Skeleton";
 
 interface Exam {
   id: string;
@@ -23,27 +24,90 @@ interface Exam {
   participant_count?: number;
 }
 
+// Memoized exam row component to prevent unnecessary re-renders
+const ExamRow = memo(function ExamRow({ 
+  exam, 
+  config 
+}: { 
+  exam: Exam; 
+  config: { label: string; badgeClass: string; dotClass: string };
+}) {
+  return (
+    <Link
+      href={`/admin/exams/${exam.id}`}
+      className="group flex flex-col md:grid md:grid-cols-12 gap-4 p-4 md:items-center hover:bg-muted/40 transition-colors"
+    >
+      <div className="md:col-span-4 flex flex-col gap-1 pl-2">
+        <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors line-clamp-1">
+          {exam.title}
+        </h4>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Calendar className="w-3 h-3" />
+          <span>
+            {new Date(exam.created_at).toLocaleDateString(undefined, { 
+              month: "short", 
+              day: "numeric",
+              year: "numeric"
+            })}
+          </span>
+        </div>
+      </div>
+
+      <div className="md:col-span-2 flex items-center">
+        <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium ${config.badgeClass}`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${config.dotClass}`} />
+          {config.label}
+        </div>
+      </div>
+
+      <div className="md:col-span-2 flex items-center">
+        <span className="font-mono text-xs px-2 py-1 rounded bg-muted/50 text-foreground border border-border/50">
+          {exam.exam_code}
+        </span>
+      </div>
+
+      <div className="md:col-span-3 flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5" title="Participants">
+          <Users className="w-4 h-4" />
+          <span>{exam.participant_count || 0}</span>
+        </div>
+        <div className="flex items-center gap-1.5" title="Duration">
+          <Clock className="w-4 h-4" />
+          <span>{Math.round(exam.duration_seconds / 60)}m</span>
+        </div>
+      </div>
+
+      <div className="md:col-span-1 flex items-center justify-end pr-2">
+        <div className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-background border border-transparent group-hover:border-border transition-all">
+          <ArrowRight className="w-4 h-4" />
+        </div>
+      </div>
+    </Link>
+  );
+});
+
 export default function AdminDashboard() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchExams = async () => {
-      try {
-        const res = await fetch("/api/admin/exams");
-        if (res.ok) {
-          const data = await res.json();
-          setExams(data.exams || []);
-        }
-      } catch (error) {
-        console.error("Failed to fetch exams:", error);
-      } finally {
-        setLoading(false);
+  const fetchExams = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/exams");
+      if (res.ok) {
+        const data = await res.json();
+        setExams(data.exams || []);
       }
-    };
-    fetchExams();
+    } catch (error) {
+      console.error("Failed to fetch exams:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchExams();
+  }, [fetchExams]);
 
   const statusConfig: Record<string, { label: string; badgeClass: string; dotClass: string }> = {
     draft: { label: "Draft", badgeClass: "text-muted-foreground bg-muted border-border", dotClass: "bg-muted-foreground" },
@@ -52,20 +116,36 @@ export default function AdminDashboard() {
     closed: { label: "Closed", badgeClass: "text-success bg-success-muted border-success/20", dotClass: "bg-success" },
   };
 
+  const filteredExams = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    return exams.filter(
+      (e) =>
+        e.title.toLowerCase().includes(query) ||
+        e.exam_code.toLowerCase().includes(query)
+    );
+  }, [exams, searchQuery]);
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] animate-fade-in">
-        <div className="spinner mb-4" style={{ width: 24, height: 24 }} />
-        <p className="text-sm text-muted-foreground font-medium">Loading assessments...</p>
+      <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border">
+          <div>
+            <Skeleton className="h-7 w-32 mb-1" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-64 rounded-md" />
+            <Skeleton className="h-9 w-24 rounded-md" />
+          </div>
+        </div>
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }
-
-  const filteredExams = exams.filter(
-    (e) =>
-      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.exam_code.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
@@ -133,62 +213,11 @@ export default function AdminDashboard() {
               {filteredExams.map((exam) => {
                 const config = statusConfig[exam.status] || statusConfig.draft;
                 return (
-                  <Link
+                  <ExamRow
                     key={exam.id}
-                    href={`/admin/exams/${exam.id}`}
-                    className="group flex flex-col md:grid md:grid-cols-12 gap-4 p-4 md:items-center hover:bg-muted/40 transition-colors"
-                  >
-                    {/* Title & Date */}
-                    <div className="md:col-span-4 flex flex-col gap-1 pl-2">
-                      <h4 className="text-sm font-medium text-foreground group-hover:text-accent transition-colors line-clamp-1">
-                        {exam.title}
-                      </h4>
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Calendar className="w-3 h-3" />
-                        <span>
-                          {new Date(exam.created_at).toLocaleDateString(undefined, { 
-                            month: "short", 
-                            day: "numeric",
-                            year: "numeric"
-                          })}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="md:col-span-2 flex items-center">
-                      <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium ${config.badgeClass}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${config.dotClass}`} />
-                        {config.label}
-                      </div>
-                    </div>
-
-                    {/* Code */}
-                    <div className="md:col-span-2 flex items-center">
-                      <span className="font-mono text-xs px-2 py-1 rounded bg-muted/50 text-foreground border border-border/50">
-                        {exam.exam_code}
-                      </span>
-                    </div>
-
-                    {/* Details (Participants & Duration) */}
-                    <div className="md:col-span-3 flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1.5" title="Participants">
-                        <Users className="w-4 h-4" />
-                        <span>{exam.participant_count || 0}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5" title="Duration">
-                        <Clock className="w-4 h-4" />
-                        <span>{Math.round(exam.duration_seconds / 60)}m</span>
-                      </div>
-                    </div>
-
-                    {/* Action */}
-                    <div className="md:col-span-1 flex items-center justify-end pr-2">
-                      <div className="w-8 h-8 rounded-md flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-background border border-transparent group-hover:border-border transition-all">
-                        <ArrowRight className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </Link>
+                    exam={exam}
+                    config={config}
+                  />
                 );
               })}
             </div>

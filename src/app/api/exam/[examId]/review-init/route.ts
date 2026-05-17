@@ -11,8 +11,9 @@ type ReviewQuestionRow = {
         id: string;
         topic: string;
         question: string;
+        question_type: string;
       }
-    | { id: string; topic: string; question: string }[]
+    | { id: string; topic: string; question: string; question_type: string }[]
     | null;
 };
 
@@ -54,7 +55,8 @@ export async function GET(
       questions (
         id,
         topic,
-        question
+        question,
+        question_type
       )
     `,
     )

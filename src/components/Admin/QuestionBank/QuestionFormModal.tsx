@@ -33,16 +33,16 @@ export function QuestionFormModal({
   submitting,
 }: QuestionFormModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto pt-[5vh]">
       <div
-        className="card p-6 sm:p-8 w-full max-w-2xl my-8"
+        className="card p-6 sm:p-8 w-full max-w-3xl mb-8 max-h-[85vh] overflow-y-auto custom-scrollbar"
         role="dialog"
         aria-modal="true"
         aria-labelledby="question-form-title"
       >
         <h2
           id="question-form-title"
-          className="text-xl font-bold text-foreground mb-6"
+          className="text-xl font-bold text-foreground mb-6 sticky top-0 bg-card z-10 pb-4"
         >
           {editingId ? "Edit Question" : "Add New Question"}
         </h2>
@@ -154,7 +154,7 @@ export function QuestionFormModal({
                     code_snippet: e.target.value,
                   }))
                 }
-                className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
+                className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px] resize-y"
                 placeholder="Enter React/JSX code here..."
               />
             </div>
@@ -173,7 +173,7 @@ export function QuestionFormModal({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, question: e.target.value }))
               }
-              className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[100px]"
+              className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[100px] resize-y"
               placeholder={
                 form.question_type === "programming"
                   ? "Describe the programming task..."
@@ -248,7 +248,7 @@ export function QuestionFormModal({
                       starter_code: e.target.value,
                     }))
                   }
-                  className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px]"
+                  className="w-full px-4 py-2.5 rounded bg-background border border-border font-mono text-sm text-foreground focus:outline-none focus:border-primary transition-all min-h-[150px] resize-y"
                   placeholder={`function ${form.function_name || "solution"}(a, b) {\n  // Write your code here\n}`}
                   required
                 />
@@ -262,12 +262,19 @@ export function QuestionFormModal({
                     type="button"
                     onClick={() => {
                       const tcs = [...(form.test_cases || [])];
-                      tcs.push({
+                      const isComponent = form.challenge_mode === "component";
+                      const base: Record<string, unknown> = {
                         id: `tc${tcs.length + 1}`,
                         name: `Test ${tcs.length + 1}`,
-                        input: [],
-                        expected: "",
-                      });
+                      };
+                      if (isComponent) {
+                        base.props = {};
+                        base.expectedContains = [];
+                      } else {
+                        base.input = [];
+                        base.expected = "";
+                      }
+                      tcs.push(base as TestCase);
                       setForm((prev) => ({ ...prev, test_cases: tcs }));
                     }}
                     className="text-xs font-semibold text-primary hover:underline"
@@ -276,116 +283,168 @@ export function QuestionFormModal({
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {(form.test_cases || []).map((tc: TestCase, idx: number) => (
-                    <div
-                      key={tc.id}
-                      className="p-3 rounded bg-background border border-border space-y-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground">
-                          #{idx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={tc.name}
-                          onChange={(e) => {
-                            const tcs = [...(form.test_cases || [])];
-                            tcs[idx] = { ...tcs[idx], name: e.target.value };
-                            setForm((prev) => ({ ...prev, test_cases: tcs }));
-                          }}
-                          className="flex-1 px-3 py-1.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary"
-                          placeholder="Test name"
-                        />
-                        {(form.test_cases || []).length > 1 && (
-                          <button
-                            type="button"
-                            aria-label={`Remove test case ${idx + 1}`}
-                            onClick={() => {
-                              const tcs = (form.test_cases || []).filter(
-                                (_: TestCase, i: number) => i !== idx,
-                              );
+                  {(form.test_cases || []).map((tc: TestCase, idx: number) => {
+                    const isComponent = form.challenge_mode === "component";
+                    return (
+                      <div
+                        key={tc.id}
+                        className="p-3 rounded bg-background border border-border space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-muted-foreground">
+                            #{idx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={tc.name}
+                            onChange={(e) => {
+                              const tcs = [...(form.test_cases || [])];
+                              tcs[idx] = { ...tcs[idx], name: e.target.value };
                               setForm((prev) => ({ ...prev, test_cases: tcs }));
                             }}
-                            className="p-1 text-danger hover:bg-danger/10 rounded"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
+                            className="flex-1 px-3 py-1.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary"
+                            placeholder="Test name"
+                          />
+                          {(form.test_cases || []).length > 1 && (
+                            <button
+                              type="button"
+                              aria-label={`Remove test case ${idx + 1}`}
+                              onClick={() => {
+                                const tcs = (form.test_cases || []).filter(
+                                  (_: TestCase, i: number) => i !== idx,
+                                );
+                                setForm((prev) => ({ ...prev, test_cases: tcs }));
+                              }}
+                              className="p-1 text-danger hover:bg-danger/10 rounded"
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                            Input (JSON array)
-                          </label>
-                          <input
-                            type="text"
-                            value={JSON.stringify(getFunctionInput(tc))}
-                            onChange={(e) => {
-                              try {
-                                const parsed = JSON.parse(e.target.value);
-                                const tcs = [...(form.test_cases || [])];
-                                tcs[idx] = {
-                                  ...tcs[idx],
-                                  input: Array.isArray(parsed)
-                                    ? parsed
-                                    : [parsed],
-                                } as TestCase;
-                                setForm((prev) => ({
-                                  ...prev,
-                                  test_cases: tcs,
-                                }));
-                              } catch {
-                                /* ignore invalid JSON while typing */
-                              }
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
-                            placeholder="[2, 3]"
-                          />
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          )}
                         </div>
-                        <div>
-                          <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                            Expected (JSON)
-                          </label>
-                          <input
-                            type="text"
-                            value={JSON.stringify(
-                              getFunctionExpected(tc) ?? "",
-                            )}
-                            onChange={(e) => {
-                              try {
-                                const parsed = JSON.parse(e.target.value);
-                                const tcs = [...(form.test_cases || [])];
-                                tcs[idx] = {
-                                  ...tcs[idx],
-                                  expected: parsed,
-                                } as TestCase;
-                                setForm((prev) => ({
-                                  ...prev,
-                                  test_cases: tcs,
-                                }));
-                              } catch {
-                                /* ignore invalid JSON while typing */
-                              }
-                            }}
-                            className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
-                            placeholder="5"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {isComponent ? (
+                            <>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                  Props (JSON object)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={JSON.stringify("props" in tc ? tc.props : {})}
+                                  onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      const tcs = [...(form.test_cases || [])];
+                                      tcs[idx] = { ...tcs[idx], props: parsed } as TestCase;
+                                      setForm((prev) => ({ ...prev, test_cases: tcs }));
+                                    } catch {
+                                      /* ignore invalid JSON while typing */
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
+                                  placeholder='{"name": "World"}'
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                  Expected Contains (JSON array)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={JSON.stringify("expectedContains" in tc ? tc.expectedContains : [])}
+                                  onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      const tcs = [...(form.test_cases || [])];
+                                      tcs[idx] = { ...tcs[idx], expectedContains: Array.isArray(parsed) ? parsed : [parsed] } as TestCase;
+                                      setForm((prev) => ({ ...prev, test_cases: tcs }));
+                                    } catch {
+                                      /* ignore invalid JSON while typing */
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
+                                  placeholder='["Hello"]'
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                  Input (JSON array)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={JSON.stringify("input" in tc && Array.isArray(tc.input) ? tc.input : [])}
+                                  onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      const tcs = [...(form.test_cases || [])];
+                                      tcs[idx] = {
+                                        ...tcs[idx],
+                                        input: Array.isArray(parsed)
+                                          ? parsed
+                                          : [parsed],
+                                      } as TestCase;
+                                      setForm((prev) => ({
+                                        ...prev,
+                                        test_cases: tcs,
+                                      }));
+                                    } catch {
+                                      /* ignore invalid JSON while typing */
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
+                                  placeholder="[2, 3]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                                  Expected (JSON)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={JSON.stringify(
+                                    "expected" in tc ? (tc.expected ?? "") : "",
+                                  )}
+                                  onChange={(e) => {
+                                    try {
+                                      const parsed = JSON.parse(e.target.value);
+                                      const tcs = [...(form.test_cases || [])];
+                                      tcs[idx] = {
+                                        ...tcs[idx],
+                                        expected: parsed,
+                                      } as TestCase;
+                                      setForm((prev) => ({
+                                        ...prev,
+                                        test_cases: tcs,
+                                      }));
+                                    } catch {
+                                      /* ignore invalid JSON while typing */
+                                    }
+                                  }}
+                                  className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-sm font-mono text-foreground focus:outline-none focus:border-primary"
+                                  placeholder="5"
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </>
@@ -451,7 +510,7 @@ export function QuestionFormModal({
                       explanation: e.target.value,
                     }))
                   }
-                  className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[80px]"
+                  className="w-full px-4 py-2.5 rounded bg-background border border-border text-foreground focus:outline-none focus:border-primary transition-all min-h-[80px] resize-y"
                   required
                 />
               </div>

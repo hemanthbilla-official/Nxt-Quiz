@@ -5,15 +5,22 @@ import { isValidStudentId } from "@/lib/student-id";
 import { assertSameOriginRequest } from "@/lib/request-security";
 
 // GET — list all students
-export async function GET() {
+export async function GET(request: Request) {
   const admin = await getAdminUser();
   if (!admin) {
     return NextResponse.json({ error: "Admin access required" }, { status: 403 });
   }
 
+  const url = new URL(request.url);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1"));
+  const pageSize = Math.min(200, Math.max(1, parseInt(url.searchParams.get("pageSize") || "100")));
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   const supabase = createAdminClient();
 
-  const { data: profiles } = await supabase
+  const { data: profiles, count } = await supabase
     .from("profiles")
     .select(
       `
@@ -30,12 +37,14 @@ export async function GET() {
           title
         )
       )
-    `
+    `,
+      { count: "exact" }
     )
     .neq("role", "admin")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(from, to);
 
-  return NextResponse.json({ students: profiles || [] });
+  return NextResponse.json({ students: profiles || [], total: count || 0, page, pageSize });
 }
 
 // DELETE — remove a student entirely (delete profile + auth user)

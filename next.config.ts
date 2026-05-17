@@ -10,6 +10,17 @@ const isLocal =
     isLocalSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL));
 
 const nextConfig: NextConfig = {
+  // Performance optimizations
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'recharts',
+      '@uiw/react-codemirror',
+      '@codemirror/lang-javascript',
+      '@codemirror/lang-css',
+    ],
+  },
+  
   // BUG-02: Forward ENVIRONMENT to client bundle as NEXT_PUBLIC_
   env: {
     NEXT_PUBLIC_ENVIRONMENT: process.env.ENVIRONMENT,

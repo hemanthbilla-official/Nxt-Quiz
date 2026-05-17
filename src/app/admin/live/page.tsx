@@ -59,42 +59,61 @@ export default function LiveMonitor() {
   useEffect(() => {
     fetchExams();
 
-    const POLL_INTERVAL = 5000;
-    let intervalId: NodeJS.Timeout;
-
-    const scheduleNextPoll = () => {
-      intervalId = setTimeout(async () => {
-        await fetchExams(true);
-        scheduleNextPoll();
-      }, POLL_INTERVAL);
-    };
-
-    scheduleNextPoll();
-
-    // Realtime subscriptions for instant updates
     const supabase = createClient();
+    let isRealtimeConnected = false;
+    let fallbackInterval: ReturnType<typeof setTimeout> | undefined = undefined;
+    let refreshTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+
+    const scheduleRefresh = () => {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        fetchExams(true);
+      }, 2000); // Debounce updates to max 1 per 2 seconds
+    };
 
     const channel = supabase
       .channel("admin-live-monitor-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "exams" },
-        () => { fetchExams(true); },
+        scheduleRefresh,
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "attempts" },
-        () => { fetchExams(true); },
+        { event: "INSERT", schema: "public", table: "attempts" },
+        scheduleRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "attempts" },
+        scheduleRefresh,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "exam_participants" },
-        () => { fetchExams(true); },
+        scheduleRefresh,
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          isRealtimeConnected = true;
+          if (fallbackInterval) {
+            clearInterval(fallbackInterval);
+            fallbackInterval = undefined;
+          }
+        }
+      });
+
+    // Fallback polling only if WebSocket fails to connect after 10s
+    fallbackInterval = setTimeout(() => {
+      if (!isRealtimeConnected) {
+        const pollInterval = setInterval(() => fetchExams(true), 5000);
+        return () => clearInterval(pollInterval);
+      }
+    }, 10000);
 
     return () => {
-      clearTimeout(intervalId);
+      clearTimeout(fallbackInterval);
+      if (refreshTimeout) clearTimeout(refreshTimeout);
       supabase.removeChannel(channel);
     };
   }, [fetchExams]);
